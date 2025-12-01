@@ -1,94 +1,204 @@
 /* style.css */
 
+/* --- Configurações Gerais --- */
 body {
+    /* Layout principal para centralizar o conteúdo verticalmente e horizontalmente */
     display: flex;
     flex-direction: column; 
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #1a202c; 
+    background-color: #1a202c; /* Fundo escuro */
     margin: 0;
-    overflow: hidden; 
+    overflow-x: hidden; /* Evita scroll horizontal indesejado */
     font-family: 'Press Start 2P', cursive;
-    color: #e2e8f0; 
+    color: #e2e8f0; /* Cor de texto padrão */
     position: relative;
-    font-size: 14px;
+    font-size: 14px; 
+    padding: 10px;
 }
 
+/* --- Canvas e Contêiner do Jogo (Arena) --- */
+
 .game-container {
-    width: 100%;
-    max-width: 1200px; /* Limite do mapa */
-    height: auto;
-    border: 5px solid #f39c12;
-    box-shadow: 0 0 30px rgba(243, 156, 18, 0.9);
+    /* As dimensões do mundo no servidor (1000x750) são usadas como proporção */
+    width: 1000px; 
+    height: 750px; 
+    max-width: 95vw; /* Limita o tamanho máximo em telas grandes */
+    margin: 20px auto; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 5px solid #f39c12; 
+    box-shadow: 0 0 30px rgba(243, 156, 18, 0.9); 
+    /* Esta linha é crucial para manter a proporção no mobile: */
+    aspect-ratio: 4 / 3; 
 }
 
 #gameCanvas {
-    display: block;
+    /* O canvas preenche 100% do seu container, se ajustando ao tamanho */
     width: 100%;
-    height: auto;
+    height: 100%;
+    display: block;
 }
 
-/* --- Mensagens e Status de Gamepad --- */
-#messages, #gamepad-status {
+/* --- Display de Mensagens (Chat) --- */
+
+#messages {
     position: absolute;
     top: 10px;
     right: 10px;
-    background: rgba(0, 0, 0, 0.7);
+    width: 250px;
+    max-height: 200px;
+    background-color: rgba(26, 32, 44, 0.8);
+    border: 2px solid #3498db;
     padding: 10px;
+    overflow-y: auto;
+    font-size: 0.7em;
     border-radius: 5px;
-    max-width: 300px;
-    z-index: 10;
-}
-#gamepad-status {
-    right: 320px;
-}
-
-/* --- Joysticks Virtuais (TOUCH) --- */
-#touch-controls-container {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 150px; /* Altura da área de toque */
-    display: flex;
-    justify-content: space-between;
-    padding: 0 20px 20px;
-    box-sizing: border-box;
-    pointer-events: none; /* Permite interações abaixo se não estiver tocando nos joysticks */
     z-index: 100;
 }
 
-.joystick-area {
-    width: 150px;
-    height: 150px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    position: relative;
-    pointer-events: all; /* Ativa a interação para esta área */
+.message {
+    margin-bottom: 5px;
+    line-height: 1.2;
+    word-wrap: break-word;
 }
 
-.joystick-knob {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 50px;
-    height: 50px;
-    background: rgba(255, 255, 255, 0.6);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
+/* --- Status de Gamepad (REMOVIDO ou ESCONDIDO) --- */
+/* Como o jogo é apenas teclado P1/P2, desativamos o status de Gamepad */
+#gamepad-status {
+    display: none; 
 }
 
-/* Esconde os Joysticks em Telas Grandes (Desktop) */
-@media (min-width: 1024px) {
-    #touch-controls-container {
-        display: none;
+/* --- Controles do Jogo (P1 e P2) --- */
+
+#controls-container {
+    display: flex;
+    flex-direction: row;
+    gap: 30px;
+    margin-top: 20px;
+    width: 100%;
+    max-width: 1000px;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.player-controls-display {
+    background-color: #2d3748;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    min-width: 200px;
+    text-align: center;
+}
+
+.player-controls-display h4 {
+    margin-top: 0;
+    color: #f39c12;
+    text-transform: uppercase;
+    font-size: 1em;
+    margin-bottom: 10px;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.control-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px dashed #4a5568;
+}
+
+.control-item:last-child {
+    border-bottom: none;
+}
+
+.label {
+    font-size: 0.8em;
+    color: #a0aec0;
+}
+
+.keys {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+}
+
+kbd {
+    background-color: #4a5568;
+    color: white;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid #718096;
+    box-shadow: 0 2px 0 #718096;
+    font-size: 0.7em;
+    min-width: 1.5em; 
+    height: 1.5em;
+    line-height: 1.5em;
+    display: inline-block;
+    text-align: center;
+}
+
+/* --- Responsividade (Melhora a visualização em Mobile) --- */
+
+@media (max-width: 1050px) {
+    /* Ajustes no Container do Jogo */
+    .game-container {
+        /* Garante que o container use a largura máxima da tela */
+        width: 98vw;
+        /* A altura é calculada automaticamente pela proporção (4/3) */
+        margin: 10px auto; 
     }
-}
-/* Mostra os Joysticks em Telas Pequenas (Mobile) */
-@media (max-width: 1023px) {
+
+    /* Ajustes no Layout Geral */
+    body {
+        font-size: 12px;
+        padding: 5px;
+    }
+
+    /* Ajustes para Mensagens */
+    #messages {
+        position: static; /* Volta a ser estático para fluir com o conteúdo */
+        width: 90%; 
+        max-height: 80px; 
+        margin: 5px auto; 
+        font-size: 0.6em;
+        padding: 5px;
+    }
+
+    /* Ajustes nos Controles */
     #controls-container {
-        display: none; /* Esconde a lista de controles de teclado no mobile */
+        flex-direction: column; /* Pilha os controles verticalmente */
+        gap: 15px;
+        align-items: center;
+        margin-top: 15px;
+    }
+
+    .player-controls-display {
+        width: 90%; 
+        max-width: 350px;
+        padding: 10px;
+    }
+    
+    .player-controls-display h4 {
+        font-size: 0.9em;
+    }
+    
+    .label {
+        font-size: 0.7em;
+    }
+
+    kbd {
+        font-size: 0.6em;
+        padding: 1px 3px;
+        min-width: 1.2em;
+        height: 1.2em;
+        line-height: 1.2em;
     }
 }
