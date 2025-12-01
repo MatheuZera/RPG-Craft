@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Multiplayer Archery Shooter - 6 Players</title>
+    <title>Multiplayer Archery Shooter - 2 Players</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
@@ -14,26 +14,41 @@
 
     <div id="messages"></div>
 
-    <div id="gamepad-status">
-        <p id="gamepad1Info" class="disconnected"><span class="status-icon"></span>Slot Gamepad 1 (P3): Desconectado</p>
-        <p id="gamepad2Info" class="disconnected"><span class="status-icon"></span>Slot Gamepad 2 (P4): Desconectado</p>
-        <p id="gamepad3Info" class="disconnected"><span class="status-icon"></span>Slot Gamepad 3 (P5): Desconectado</p>
-        <p id="gamepad4Info" class="disconnected"><span class="status-icon"></span>Slot Gamepad 4 (P6): Desconectado</p>
-    </div>
-
     <div id="controls-container">
-        <h4>Controles (P1/P2 Teclado)</h4>
-        <p>P1: WASD (Mover) | SHIFT (Correr) | C (Atirar)</p>
-        <p>P2: Setas (Mover) | P (Correr) | E (Atirar)</p>
-        <p>P3-P6: Gamepad (Joystick Esquerdo p/ Mover, Botão X/A p/ Atirar)</p>
-    </div>
-    
-    <div id="touch-controls-container">
-        <div id="move-joystick-area" class="joystick-area">
-            <div id="move-joystick" class="joystick-knob"></div>
+        <div id="player1-controls" class="player-controls-display">
+            <h4>P1 (Teclado)</h4>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <span class="label">Mover</span>
+                    <div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+                </div>
+                <div class="control-item">
+                    <span class="label">Atirar</span>
+                    <div class="keys"><kbd>C</kbd></div>
+                </div>
+                <div class="control-item">
+                    <span class="label">Correr</span>
+                    <div class="keys"><kbd>F</kbd></div>
+                </div>
+            </div>
         </div>
-        <div id="aim-joystick-area" class="joystick-area">
-            <div id="aim-joystick" class="joystick-knob"></div>
+
+        <div id="player2-controls" class="player-controls-display">
+            <h4>P2 (Teclado)</h4>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <span class="label">Mover</span>
+                    <div class="keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></div>
+                </div>
+                <div class="control-item">
+                    <span class="label">Atirar</span>
+                    <div class="keys"><kbd>L</kbd></div>
+                </div>
+                <div class="control-item">
+                    <span class="label">Correr</span>
+                    <div class="keys"><kbd>P</kbd></div>
+                </div>
+            </div>
         </div>
     </div>
     
