@@ -18,8 +18,7 @@ body {
     user-select: none;
 }
 
-/* --- Canvas e Contêiner do Jogo (Arena) --- */
-
+/* --- Canvas e Contêiner do Jogo --- */
 .game-container {
     width: 800px; 
     height: 600px; 
@@ -40,8 +39,7 @@ body {
     touch-action: none; 
 }
 
-/* --- Display de Mensagens (Chat) --- */
-
+/* --- Display de Mensagens --- */
 #messages {
     position: absolute;
     top: 10px;
@@ -64,7 +62,6 @@ body {
 }
 
 /* --- Status do Gamepad --- */
-
 #gamepad-status {
     position: absolute;
     top: 10px;
@@ -92,57 +89,60 @@ body {
 }
 
 .disconnected .status-icon {
-    background-color: #e74c3c; /* Vermelho */
+    background-color: #e74c3c;
 }
 
 .connected .status-icon {
-    background-color: #2ecc71; /* Verde */
+    background-color: #2ecc71;
 }
 
-/* --- Controles do Jogo (PC) --- */
+/* --- Controles do Jogo (AJUSTADO PARA SER COMPACTO) --- */
 
 #controls-container {
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap; /* Permite quebrar em linhas no PC */
-    gap: 15px;
+    flex-wrap: wrap;
+    gap: 10px; 
     margin-top: 15px;
     width: 100%;
-    max-width: 800px; /* Alinhado com a largura do canvas */
+    max-width: 800px;
     justify-content: center;
     align-items: flex-start;
 }
 
 .player-controls-display {
     background-color: #2d3748;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    min-width: 180px;
-    flex: 1; /* Permite que ocupe o espaço disponível */
-    max-width: 380px;
+    padding: 10px; 
+    border-radius: 6px; 
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    min-width: 150px; 
+    flex: 1; 
+    max-width: 250px; 
     text-align: center;
+    
+    /* CRÍTICO: Esconde por padrão, só o JS exibe quando o jogador entra */
+    display: none; 
 }
 
 .player-controls-display h4 {
     margin-top: 0;
     color: #f39c12;
     text-transform: uppercase;
-    font-size: 0.9em;
-    margin-bottom: 10px;
+    font-size: 0.8em; 
+    margin-bottom: 6px;
 }
 
-.controls-grid {
+.controls-grid.compact {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px; 
 }
 
 .control-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 3px 0;
+    padding: 2px 0; 
     border-bottom: 1px dashed #4a5568;
 }
 
@@ -151,7 +151,7 @@ body {
 }
 
 .label {
-    font-size: 0.75em;
+    font-size: 0.65em; 
     color: #a0aec0;
 }
 
@@ -177,7 +177,6 @@ kbd {
 }
 
 /* --- Responsividade (Mobile) --- */
-
 @media (max-width: 850px) {
     
     .game-container {
@@ -187,7 +186,7 @@ kbd {
     }
     
     #controls-container {
-        display: none; /* Esconde controles no mobile (o ideal é usar Joysticks Virtuais) */
+        display: none; 
     }
 
     #messages, #gamepad-status {

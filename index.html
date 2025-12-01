@@ -18,68 +18,39 @@
         <p id="gamepad1Info" class="disconnected"><span class="status-icon"></span>Slot Gamepad 1 (P3): Desconectado</p>
         <p id="gamepad2Info" class="disconnected"><span class="status-icon"></span>Slot Gamepad 2 (P4): Desconectado</p>
     </div>
-    
+
     <div id="controls-container">
-        <div id="player1-controls" class="player-controls-display">
+        <div id="player1-controls" class="player-controls-display" data-player-id="P1">
             <h4>P1 (Teclado)</h4>
-            <div class="controls-grid">
-                <div class="control-item">
-                    <span class="label">Mover</span>
-                    <div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Atirar</span>
-                    <div class="keys"><kbd>C</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Correr</span>
-                    <div class="keys"><kbd>F</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Armas</span>
-                    <div class="keys"><kbd>1</kbd>-<kbd>7</kbd></div>
-                </div>
+            <div class="controls-grid compact">
+                <div class="control-item"><span class="label">Mover</span><div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div></div>
+                <div class="control-item"><span class="label">Atirar/Correr</span><div class="keys"><kbd>C</kbd><kbd>F</kbd></div></div>
+                <div class="control-item"><span class="label">Armas</span><div class="keys"><kbd>1</kbd>-<kbd>7</kbd></div></div>
             </div>
         </div>
 
-        <div id="player2-controls" class="player-controls-display">
+        <div id="player2-controls" class="player-controls-display" data-player-id="P2">
             <h4>P2 (Teclado)</h4>
-            <div class="controls-grid">
-                <div class="control-item">
-                    <span class="label">Mover</span>
-                    <div class="keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Atirar</span>
-                    <div class="keys"><kbd>E</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Correr</span>
-                    <div class="keys"><kbd>P</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Armas</span>
-                    <div class="keys"><kbd>1</kbd>-<kbd>7</kbd></div>
-                </div>
+            <div class="controls-grid compact">
+                <div class="control-item"><span class="label">Mover</span><div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div></div>
+                <div class="control-item"><span class="label">Atirar/Correr</span><div class="keys"><kbd>C</kbd><kbd>F</kbd></div></div>
+                <div class="control-item"><span class="label">Armas</span><div class="keys"><kbd>1</kbd>-<kbd>7</kbd></div></div>
             </div>
         </div>
 
-        <div id="player3-controls" class="player-controls-display">
+        <div id="player3-controls" class="player-controls-display" data-player-id="P3" style="display:none;">
             <h4>P3 (Gamepad 1)</h4>
-            <div class="controls-grid">
+            <div class="controls-grid compact">
                 <div class="control-item"><span class="label">Mover</span><div class="keys">Joystick Esquerdo</div></div>
-                <div class="control-item"><span class="label">Atirar</span><div class="keys"><kbd>A (X)</kbd></div></div>
-                <div class="control-item"><span class="label">Correr</span><div class="keys"><kbd>B (O)</kbd></div></div>
+                <div class="control-item"><span class="label">Atirar/Correr</span><div class="keys"><kbd>A (X)</kbd><kbd>B (O)</kbd></div></div>
                 <div class="control-item"><span class="label">Armas</span><div class="keys">D-Pad / Triggers</div></div>
             </div>
         </div>
-        
-        <div id="player4-controls" class="player-controls-display">
+        <div id="player4-controls" class="player-controls-display" data-player-id="P4" style="display:none;">
             <h4>P4 (Gamepad 2)</h4>
-            <div class="controls-grid">
+            <div class="controls-grid compact">
                 <div class="control-item"><span class="label">Mover</span><div class="keys">Joystick Esquerdo</div></div>
-                <div class="control-item"><span class="label">Atirar</span><div class="keys"><kbd>A (X)</kbd></div></div>
-                <div class="control-item"><span class="label">Correr</span><div class="keys"><kbd>B (O)</kbd></div></div>
+                <div class="control-item"><span class="label">Atirar/Correr</span><div class="keys"><kbd>A (X)</kbd><kbd>B (O)</kbd></div></div>
                 <div class="control-item"><span class="label">Armas</span><div class="keys">D-Pad / Triggers</div></div>
             </div>
         </div>

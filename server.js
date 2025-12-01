@@ -46,7 +46,7 @@ let playerCount = 0;
 let projectiles = {}; 
 let obstacles = []; 
 let lastProjectileId = 0;
-let gameLoopInterval = null; // CRÍTICO: Referência para o loop de jogo
+let gameLoopInterval = null; 
 
 
 // --- Funções Auxiliares (Colisão e Spawns) ---
@@ -77,7 +77,7 @@ function createWeapon(blueprintKey) {
     };
 }
 
-// --- Gerenciamento do Game Loop (CRÍTICO PARA A ESTABILIDADE) ---
+// --- Gerenciamento do Game Loop ---
 function startGameLoop() {
     if (!gameLoopInterval) {
         console.log("Iniciando Game Loop...");
@@ -96,7 +96,6 @@ function stopAndResetGame() {
         lastProjectileId = 0;
         
         console.log("Game Loop parado. Resetando estado do jogo.");
-        // Notifica o cliente (Embora possa não haver clientes, é bom ter)
         io.emit('gameReset', 'O servidor reiniciou por inatividade. Recarregue para uma nova partida.');
     }
 }
@@ -225,7 +224,7 @@ io.on('connection', (socket) => {
             console.log(`Jogador desconectado: ${player.name}. Total: ${playerCount}`);
         }
         
-        // CRÍTICO: Para o loop de jogo e limpa o estado se a contagem for zero
+        // Para o loop de jogo e limpa o estado se a contagem for zero
         if (playerCount === 0) {
             stopAndResetGame();
         }
@@ -260,7 +259,7 @@ function gameLoop() {
             currentSpeed *= PLAYER_SPRINT_SPEED_MULTIPLIER;
             player.energy = Math.max(0, player.energy - ENERGY_COST_SPRINT); 
         } else {
-            // Regeneração de energia (mais lenta se estiver movendo)
+            // Regeneração de energia 
             player.energy = Math.min(MAX_ENERGY, player.energy + ENERGY_REGEN_RATE * 0.5); 
         }
 

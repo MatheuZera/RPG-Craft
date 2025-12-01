@@ -4,7 +4,16 @@ const ctx = gameCanvas.getContext('2d');
 const messagesContainer = document.getElementById('messages');
 const gamepad1Info = document.getElementById('gamepad1Info');
 const gamepad2Info = document.getElementById('gamepad2Info');
-const mobileJoysticks = document.getElementById('mobile-joysticks'); // Novo container para mobile
+
+// Referências aos displays de controle
+const playerControlDisplays = {
+    'P1': document.getElementById('player1-controls'),
+    'P2': document.getElementById('player2-controls'),
+    // P3 e P4 são gamepads, mas o HTML tem containers para eles
+    'P3': document.getElementById('player3-controls'), 
+    'P4': document.getElementById('player4-controls'),
+};
+
 
 // --- Conexão e Estado Local ---
 const socket = io(); 
@@ -23,12 +32,20 @@ let animationFrameId = null;
 let keysToSend = { up: false, down: false, left: false, right: false, sprint: false };
 let attackSent = false; 
 
-// Mapeamento de Teclas (UNIFICADO com o index.html)
+// Mapeamento de Teclas (WASD/C/F para P1 E P2 - CUIDADO: Causa conflito no mesmo teclado)
 const INPUT_MAP = {
     P1: { up: ['w'], down: ['s'], left: ['a'], right: ['d'], sprint: ['f'], shoot: ['c'] },
-    P2: { up: ['arrowup'], down: ['arrowdown'], left: ['arrowleft'], right: ['arrowright'], sprint: ['p'], shoot: ['e'] }
-    // P3+ usam Gamepads (lógica em scanGamepads)
+    P2: { up: ['w'], down: ['s'], left: ['a'], right: ['d'], sprint: ['f'], shoot: ['c'] },
+    // Gamepads usam a lógica em scanGamepads, então não precisam de um mapeamento aqui
 };
+
+// --- Configurações de Gamepad ---
+const GAMEPAD_SHOOT_BUTTON = 0; 
+const GAMEPAD_SPRINT_BUTTON = 1; 
+const GAMEPAD_MOVE_AXIS_X = 0;
+const GAMEPAD_MOVE_AXIS_Y = 1;
+const GAMEPAD_DEADZONE = 0.5;
+
 
 // --- Funções Auxiliares ---
 function showMessage(text) {
@@ -43,13 +60,37 @@ function checkMobile() {
     return /Mobi|Android/i.test(navigator.userAgent);
 }
 
-// --- Lógica de Gamepad (P3+) ---
-const GAMEPAD_SHOOT_BUTTON = 0; // Botão A/X
-const GAMEPAD_SPRINT_BUTTON = 1; // Botão B/Circle (Alterado para B para ser mais fácil de apertar)
-const GAMEPAD_MOVE_AXIS_X = 0;
-const GAMEPAD_MOVE_AXIS_Y = 1;
-const GAMEPAD_DEADZONE = 0.5;
+// --- Gerenciamento do HUD de Controles (NOVA LÓGICA) ---
 
+/**
+ * Exibe o HUD de controle do player conectado e esconde os outros.
+ * @param {string} playerId ID do jogador (ex: 'P1')
+ */
+function showControlHUD(playerId) {
+    // Esconde todos os HUDs de teclado que não são do player local
+    Object.values(playerControlDisplays).forEach(el => {
+        if (el) el.style.display = 'none';
+    });
+    
+    // Mostra o HUD do jogador local
+    const hudEl = playerControlDisplays[playerId];
+    if (hudEl) {
+        hudEl.style.display = 'block';
+    }
+}
+
+/**
+ * Esconde o HUD de controle de um player que desconectou (deletado visualmente).
+ * @param {string} playerId ID do jogador (ex: 'P1')
+ */
+function hideControlHUD(playerId) {
+    const hudEl = playerControlDisplays[playerId];
+    if (hudEl) {
+        hudEl.style.display = 'none';
+    }
+}
+
+// --- Lógica de Gamepad (P3+) ---
 function updateGamepadStatus(gamepads) {
     const statusMap = { 0: gamepad1Info, 1: gamepad2Info };
 
@@ -60,7 +101,7 @@ function updateGamepadStatus(gamepads) {
         if (gamepads[i]) {
             infoEl.classList.remove('disconnected');
             infoEl.classList.add('connected');
-            infoEl.innerHTML = `<span class="status-icon"></span>Slot Gamepad ${i + 1} (P${i + 3}): Conectado (${gamepads[i].id.split('(')[0].trim()})`;
+            infoEl.innerHTML = `<span class="status-icon"></span>Slot Gamepad ${i + 1} (P${i + 3}): Conectado`;
         } else {
             infoEl.classList.remove('connected');
             infoEl.classList.add('disconnected');
@@ -173,7 +214,7 @@ function updateCamera() {
     let targetX = playerCenterX - gameCanvas.clientWidth / 2;
     let targetY = playerCenterY - gameCanvas.clientHeight / 2;
     
-    // Limites do mapa (usa o tamanho do mundo, 800x600)
+    // Limites do mapa 
     targetX = Math.max(0, Math.min(mapWidth - gameCanvas.clientWidth, targetX));
     targetY = Math.max(0, Math.min(mapHeight - gameCanvas.clientHeight, targetY));
     
@@ -184,7 +225,7 @@ function updateCamera() {
 
 function draw() {
     ctx.fillStyle = '#1a202c'; 
-    ctx.fillRect(0, 0, mapWidth, mapHeight); // Desenha o mundo inteiro
+    ctx.fillRect(0, 0, mapWidth, mapHeight); 
     
     ctx.save();
     // Aplica a câmera
@@ -201,7 +242,6 @@ function draw() {
         const proj = serverProjectiles[id];
         ctx.fillStyle = proj.color;
         ctx.beginPath();
-        // Desenha como círculo (mais fácil de centralizar)
         ctx.arc(proj.x, proj.y, 5, 0, Math.PI * 2); 
         ctx.fill();
     }
@@ -248,7 +288,6 @@ function draw() {
 }
 
 function drawLocalUI() {
-    // Aqui você pode desenhar a GUI local (munição, etc.)
     const myPlayer = allPlayers[myPlayerId];
     if (!myPlayer) return;
     
@@ -285,6 +324,9 @@ socket.on('playerData', (data) => {
     gameCanvas.width = mapWidth;
     gameCanvas.height = mapHeight;
     
+    // Exibe o HUD de controle do jogador conectado
+    showControlHUD(myPlayerId); 
+
     if (!gameRunning) {
         gameRunning = true;
         showMessage(`Conectado como ${myPlayerId}.`);
@@ -300,13 +342,19 @@ socket.on('gameStateUpdate', (data) => {
 socket.on('playerDisconnected', (playerId) => {
     delete allPlayers[playerId];
     showMessage(`${playerId} se desconectou.`);
+    
+    // Esconde/deleta o HUD do player que desconectou
+    hideControlHUD(playerId); 
+    
+    if (playerId === myPlayerId) {
+        myPlayerId = null; 
+    }
 });
 
 socket.on('playerKilled', (data) => {
     showMessage(`${data.targetId} foi abatido por ${data.killerId}!`);
 });
 
-// CRÍTICO: Lidar com o reset do servidor
 socket.on('gameReset', (message) => {
     showMessage(`[ALERTA DO SERVIDOR] ${message}`);
     
@@ -314,13 +362,15 @@ socket.on('gameReset', (message) => {
         cancelAnimationFrame(animationFrameId);
     }
     
+    // Esconde todos os HUDs de controle ao resetar
+    Object.keys(playerControlDisplays).forEach(hideControlHUD);
+
     // Limpar o estado local
     myPlayerId = null; 
     allPlayers = {}; 
     serverProjectiles = {}; 
     gameRunning = false;
     
-    // Força o recarregamento para limpar totalmente o estado do cliente e reconectar.
     setTimeout(() => {
         window.location.reload(); 
     }, 3000);
