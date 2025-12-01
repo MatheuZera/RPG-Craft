@@ -2,10 +2,9 @@
 const gameCanvas = document.getElementById('gameCanvas');
 const ctx = gameCanvas.getContext('2d');
 const messagesContainer = document.getElementById('messages');
-const joystickMove = document.getElementById('joystick-move');
-const joystickAction = document.getElementById('joystick-action');
-const btnA = document.getElementById('btn-a'); // Atirar
-const btnB = document.getElementById('btn-b'); // Correr
+const gamepad1Info = document.getElementById('gamepad1Info');
+const gamepad2Info = document.getElementById('gamepad2Info');
+const mobileJoysticks = document.getElementById('mobile-joysticks'); // Novo container para mobile
 
 // --- Conexão e Estado Local ---
 const socket = io(); 
@@ -13,23 +12,22 @@ let myPlayerId = null;
 let allPlayers = {}; 
 let serverProjectiles = {}; 
 let serverObstacles = []; 
-let mapWidth = 1000; 
-let mapHeight = 750; 
+let mapWidth = 800; 
+let mapHeight = 600; 
 let cameraX = 0; 
 let cameraY = 0; 
 let gameRunning = false;
-const PLAYER_SIZE = 30; 
-let animationFrameId = null; // ID para o requestAnimationFrame
+let animationFrameId = null; 
 
 // --- Input Unificado ---
 let keysToSend = { up: false, down: false, left: false, right: false, sprint: false };
 let attackSent = false; 
 
-// Mapeamento de Teclas e Botões:
+// Mapeamento de Teclas (UNIFICADO com o index.html)
 const INPUT_MAP = {
     P1: { up: ['w'], down: ['s'], left: ['a'], right: ['d'], sprint: ['f'], shoot: ['c'] },
-    P2: { up: ['arrowup'], down: ['arrowdown'], left: ['arrowleft'], right: ['arrowright'], sprint: ['p'], shoot: ['l'] }
-    // P3+ podem usar Gamepads (lógica em scanGamepads)
+    P2: { up: ['arrowup'], down: ['arrowdown'], left: ['arrowleft'], right: ['arrowright'], sprint: ['p'], shoot: ['e'] }
+    // P3+ usam Gamepads (lógica em scanGamepads)
 };
 
 // --- Funções Auxiliares ---
@@ -38,34 +36,52 @@ function showMessage(text) {
     msg.classList.add('message');
     msg.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
     messagesContainer.appendChild(msg);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Auto-scroll
+    messagesContainer.scrollTop = messagesContainer.scrollHeight; 
 }
 
 function checkMobile() {
     return /Mobi|Android/i.test(navigator.userAgent);
 }
 
-
 // --- Lógica de Gamepad (P3+) ---
-const GAMEPAD_SHOOT_BUTTON = 0; // Botão A no Xbox, X no PS
-const GAMEPAD_SPRINT_BUTTON = 3; // Botão Y no Xbox, Triângulo no PS
+const GAMEPAD_SHOOT_BUTTON = 0; // Botão A/X
+const GAMEPAD_SPRINT_BUTTON = 1; // Botão B/Circle (Alterado para B para ser mais fácil de apertar)
 const GAMEPAD_MOVE_AXIS_X = 0;
 const GAMEPAD_MOVE_AXIS_Y = 1;
 const GAMEPAD_DEADZONE = 0.5;
 
+function updateGamepadStatus(gamepads) {
+    const statusMap = { 0: gamepad1Info, 1: gamepad2Info };
+
+    for (let i = 0; i < 2; i++) {
+        const infoEl = statusMap[i];
+        if (!infoEl) continue;
+
+        if (gamepads[i]) {
+            infoEl.classList.remove('disconnected');
+            infoEl.classList.add('connected');
+            infoEl.innerHTML = `<span class="status-icon"></span>Slot Gamepad ${i + 1} (P${i + 3}): Conectado (${gamepads[i].id.split('(')[0].trim()})`;
+        } else {
+            infoEl.classList.remove('connected');
+            infoEl.classList.add('disconnected');
+            infoEl.textContent = `Slot Gamepad ${i + 1} (P${i + 3}): Desconectado`;
+        }
+    }
+}
+
 function scanGamepads() {
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-    
-    // Procura o gamepad para P1 (Slot 0), P2 (Slot 1), etc.
-    // Simplificando: P1/P2 são Teclado/Mobile. P3 usa Gamepad 1 (Slot 0).
-    // Se o seu jogo usa P3, P4... você precisa de uma lógica de alocação de gamepad
-    
-    // Assumindo que P1 e P2 usam teclado, o primeiro Gamepad conectado é P3 (Gamepad 1/Slot 0)
-    // Se P3 for o meu ID, uso o Gamepad 1 (índice 0)
+    updateGamepadStatus(gamepads);
+
+    let gamepadIndex = -1;
     if (myPlayerId === 'P3' && gamepads[0]) {
-        handleGamepadInput(gamepads[0]);
-    } else if (myPlayerId === 'P4' && gamepads[1]) { // Se houver P4
-        handleGamepadInput(gamepads[1]);
+        gamepadIndex = 0;
+    } else if (myPlayerId === 'P4' && gamepads[1]) {
+        gamepadIndex = 1;
+    }
+
+    if (gamepadIndex !== -1) {
+        handleGamepadInput(gamepads[gamepadIndex]);
     }
 }
 
@@ -86,82 +102,6 @@ function handleGamepadInput(gamepad) {
     keysToSend.sprint = (gamepad.buttons[GAMEPAD_SPRINT_BUTTON] && gamepad.buttons[GAMEPAD_SPRINT_BUTTON].pressed);
 }
 
-
-// --- Lógica de Joystick Virtual (Mobile) ---
-if (checkMobile()) {
-    joystickMove.style.display = 'block';
-    joystickAction.style.display = 'flex';
-    document.getElementById('controls-container').style.display = 'none';
-
-    // Lógica para o Joystick de Movimento
-    const moveHandle = joystickMove.querySelector('.joystick-handle');
-    let activeTouchIdMove = null;
-    
-    function updateMove(touch, rect, maxRadius) {
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        
-        let dx = touch.clientX - centerX;
-        let dy = touch.clientY - centerY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance > maxRadius) {
-            dx = (dx / distance) * maxRadius;
-            dy = (dy / distance) * maxRadius;
-        }
-
-        moveHandle.style.transform = `translate(${dx}px, ${dy}px)`;
-
-        const deadzone = maxRadius * 0.2;
-        keysToSend.up = dy < -deadzone; 
-        keysToSend.down = dy > deadzone;
-        keysToSend.left = dx < -deadzone;
-        keysToSend.right = dx > deadzone;
-    }
-    
-    joystickMove.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.changedTouches[0];
-        activeTouchIdMove = touch.identifier;
-        joystickMove.classList.add('active');
-        const rect = joystickMove.getBoundingClientRect();
-        const maxRadius = rect.width / 2;
-        updateMove(touch, rect, maxRadius);
-    });
-
-    joystickMove.addEventListener('touchmove', (e) => {
-        if (activeTouchIdMove !== null) {
-            const touch = Array.from(e.changedTouches).find(t => t.identifier === activeTouchIdMove);
-            if (touch) {
-                const rect = joystickMove.getBoundingClientRect();
-                const maxRadius = rect.width / 2;
-                updateMove(touch, rect, maxRadius);
-            }
-        }
-    });
-    
-    const endMove = () => {
-        activeTouchIdMove = null;
-        joystickMove.classList.remove('active');
-        moveHandle.style.transform = `translate(0, 0)`;
-        keysToSend.up = keysToSend.down = keysToSend.left = keysToSend.right = false;
-    };
-
-    joystickMove.addEventListener('touchend', endMove);
-    joystickMove.addEventListener('touchcancel', endMove);
-
-    // Lógica para os Botões de Ação
-    btnA.addEventListener('touchstart', (e) => { e.preventDefault(); attackSent = true; btnA.classList.add('active'); });
-    btnA.addEventListener('touchend', () => { btnA.classList.remove('active'); });
-    
-    btnB.addEventListener('touchstart', (e) => { e.preventDefault(); keysToSend.sprint = true; btnB.classList.add('active'); });
-    btnB.addEventListener('touchend', () => { keysToSend.sprint = false; btnB.classList.remove('active'); });
-
-} else {
-    // Esconde joysticks virtuais no PC
-    if(joystickMove) joystickMove.style.display = 'none';
-    if(joystickAction) joystickAction.style.display = 'none';
-}
 
 // --- Lógica de Input (Teclado - PC) ---
 if (!checkMobile()) {
@@ -200,25 +140,24 @@ if (!checkMobile()) {
     });
 }
 
+
 // --- Função de Envio de Input ---
 function sendInputToServer() {
     if (!gameRunning || !myPlayerId) return;
 
-    // Se estiver no PC e for Gamepad player (P3, P4, etc.)
-    if (!checkMobile() && (myPlayerId === 'P3' || myPlayerId === 'P4')) {
+    // Se não for mobile, verifica Gamepads
+    if (!checkMobile()) {
         scanGamepads();
     }
     
     const myPlayer = allPlayers[myPlayerId];
     if (!myPlayer || !myPlayer.isAlive) return;
 
-    // Envio final para o servidor
     socket.emit('playerInput', {
         keys: keysToSend, 
         shoot: attackSent, 
     });
 
-    // Resetar o estado de tiro
     attackSent = false; 
 }
 
@@ -234,7 +173,7 @@ function updateCamera() {
     let targetX = playerCenterX - gameCanvas.clientWidth / 2;
     let targetY = playerCenterY - gameCanvas.clientHeight / 2;
     
-    // Limites do mapa (usa o tamanho do mundo)
+    // Limites do mapa (usa o tamanho do mundo, 800x600)
     targetX = Math.max(0, Math.min(mapWidth - gameCanvas.clientWidth, targetX));
     targetY = Math.max(0, Math.min(mapHeight - gameCanvas.clientHeight, targetY));
     
@@ -245,9 +184,10 @@ function updateCamera() {
 
 function draw() {
     ctx.fillStyle = '#1a202c'; 
-    ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+    ctx.fillRect(0, 0, mapWidth, mapHeight); // Desenha o mundo inteiro
     
     ctx.save();
+    // Aplica a câmera
     ctx.translate(-cameraX, -cameraY); 
 
     // 1. Desenha Obstáculos
@@ -261,7 +201,8 @@ function draw() {
         const proj = serverProjectiles[id];
         ctx.fillStyle = proj.color;
         ctx.beginPath();
-        ctx.arc(proj.x, proj.y, 10 / 2, 0, Math.PI * 2); 
+        // Desenha como círculo (mais fácil de centralizar)
+        ctx.arc(proj.x, proj.y, 5, 0, Math.PI * 2); 
         ctx.fill();
     }
 
@@ -293,16 +234,35 @@ function draw() {
         ctx.fillRect(player.x, player.y - 9, player.width, 3);
         ctx.fillStyle = '#3498db';
         ctx.fillRect(player.x, player.y - 9, energyWidth, 3);
+        
+        // Nome da Arma
+        ctx.fillStyle = '#f39c12';
+        ctx.font = '8px "Press Start 2P"';
+        ctx.fillText(player.equippedWeapon.name, player.x + player.width / 2, player.y + player.height + 15);
     }
     
     ctx.restore(); 
+    
+    // UI Local (sem câmera)
+    drawLocalUI(); 
+}
+
+function drawLocalUI() {
+    // Aqui você pode desenhar a GUI local (munição, etc.)
+    const myPlayer = allPlayers[myPlayerId];
+    if (!myPlayer) return;
+    
+    // Exibe munição
+    ctx.fillStyle = myPlayer.color;
+    ctx.font = '12px "Press Start 2P"';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Munição: ${myPlayer.arrows}`, 10, 30);
 }
 
 
 // --- Loop Principal (Cliente) ---
 function gameLoop(currentTime) {
     if (!gameRunning) {
-        // Se o jogo parou, não peça a próxima animação
         return; 
     }
 
@@ -337,10 +297,6 @@ socket.on('gameStateUpdate', (data) => {
     serverProjectiles = data.projectiles;
 });
 
-socket.on('message', (text) => {
-    showMessage(text);
-});
-
 socket.on('playerDisconnected', (playerId) => {
     delete allPlayers[playerId];
     showMessage(`${playerId} se desconectou.`);
@@ -354,21 +310,18 @@ socket.on('playerKilled', (data) => {
 socket.on('gameReset', (message) => {
     showMessage(`[ALERTA DO SERVIDOR] ${message}`);
     
-    // Limpar o estado local
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
     }
+    
+    // Limpar o estado local
     myPlayerId = null; 
     allPlayers = {}; 
     serverProjectiles = {}; 
     gameRunning = false;
     
-    // Força a atualização da tela para um estado limpo
-    ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-    showMessage("Cliente resetado. Recarregando em 5 segundos...");
-    
-    // Recarregar a página para garantir um estado limpo para a próxima conexão
+    // Força o recarregamento para limpar totalmente o estado do cliente e reconectar.
     setTimeout(() => {
         window.location.reload(); 
-    }, 5000);
+    }, 3000);
 });

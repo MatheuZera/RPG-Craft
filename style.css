@@ -9,24 +9,22 @@ body {
     min-height: 100vh;
     background-color: #1a202c; 
     margin: 0;
-    overflow-x: hidden; 
+    overflow: hidden; 
     font-family: 'Press Start 2P', cursive;
     color: #e2e8f0; 
     position: relative;
     font-size: 14px; 
     padding: 10px;
     user-select: none;
-    -webkit-tap-highlight-color: transparent; 
 }
 
 /* --- Canvas e Contêiner do Jogo (Arena) --- */
 
 .game-container {
-    /* Usando a proporção de 1000x750 (4:3) para a "distância de câmera" */
-    width: 1000px; 
-    height: 750px; 
+    width: 800px; 
+    height: 600px; 
     max-width: 95vw; 
-    margin: 20px auto; 
+    margin: 10px auto; 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -65,15 +63,52 @@ body {
     word-wrap: break-word;
 }
 
+/* --- Status do Gamepad --- */
+
+#gamepad-status {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(26, 32, 44, 0.8);
+    border: 2px solid #555;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 100;
+}
+
+#gamepad-status p {
+    margin: 3px 0;
+    font-size: 0.7em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-icon {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.disconnected .status-icon {
+    background-color: #e74c3c; /* Vermelho */
+}
+
+.connected .status-icon {
+    background-color: #2ecc71; /* Verde */
+}
+
 /* --- Controles do Jogo (PC) --- */
 
 #controls-container {
     display: flex;
     flex-direction: row;
-    gap: 20px;
+    flex-wrap: wrap; /* Permite quebrar em linhas no PC */
+    gap: 15px;
     margin-top: 15px;
     width: 100%;
-    max-width: 1000px;
+    max-width: 800px; /* Alinhado com a largura do canvas */
     justify-content: center;
     align-items: flex-start;
 }
@@ -83,7 +118,9 @@ body {
     padding: 15px;
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    min-width: 250px;
+    min-width: 180px;
+    flex: 1; /* Permite que ocupe o espaço disponível */
+    max-width: 380px;
     text-align: center;
 }
 
@@ -91,21 +128,21 @@ body {
     margin-top: 0;
     color: #f39c12;
     text-transform: uppercase;
-    font-size: 1em;
+    font-size: 0.9em;
     margin-bottom: 10px;
 }
 
 .controls-grid {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .control-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 5px 0;
+    padding: 3px 0;
     border-bottom: 1px dashed #4a5568;
 }
 
@@ -114,7 +151,7 @@ body {
 }
 
 .label {
-    font-size: 0.8em;
+    font-size: 0.75em;
     color: #a0aec0;
 }
 
@@ -139,128 +176,26 @@ kbd {
     text-align: center;
 }
 
-/* --- Joystick Virtual (Mobile) --- */
-
-.joystick-container {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    width: 120px;
-    height: 120px;
-    z-index: 1000;
-    display: none; 
-}
-
-.joystick-base {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
-    background-color: rgba(74, 85, 104, 0.5); 
-    border-radius: 50%;
-    border: 2px solid #a0aec0;
-}
-
-.joystick-handle {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 50px;
-    height: 50px;
-    background-color: #f39c12;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
-.joystick-actions {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    display: none; 
-    flex-direction: row;
-    gap: 20px;
-    z-index: 1000;
-}
-
-.action-button {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    color: white;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 0.8em;
-    border: 3px solid #f39c12;
-    box-shadow: 0 4px 0 #cf8410;
-    cursor: pointer;
-    transition: all 0.1s ease-out;
-}
-
-.shoot {
-    background-color: #e74c3c; 
-    border-color: #c0392b;
-    box-shadow: 0 4px 0 #c0392b;
-}
-
-.sprint {
-    background-color: #3498db; 
-    border-color: #2980b9;
-    box-shadow: 0 4px 0 #2980b9;
-}
-
-.action-button:active, .action-button.active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 #c0392b;
-}
-
 /* --- Responsividade (Mobile) --- */
 
-@media (max-width: 1050px) {
+@media (max-width: 850px) {
     
     .game-container {
         width: 98vw;
-        height: unset; 
         max-width: 98vw;
         margin: 5px auto;
     }
     
     #controls-container {
-        display: none; 
+        display: none; /* Esconde controles no mobile (o ideal é usar Joysticks Virtuais) */
     }
 
-    #messages {
-        position: static;
-        width: 95%; 
-        max-height: 80px; 
+    #messages, #gamepad-status {
+        position: static; 
+        width: calc(100% - 20px); 
+        max-height: 70px; 
         margin: 5px auto; 
         font-size: 0.6em;
-        padding: 5px;
-    }
-
-    /* Ajustes para Joysticks */
-    .joystick-container {
-        width: 100px;
-        height: 100px;
-        bottom: 10px;
-        left: 10px;
-    }
-
-    .joystick-handle {
-        width: 40px;
-        height: 40px;
-    }
-
-    .joystick-actions {
-        bottom: 20px;
-        right: 20px;
-        gap: 15px;
-    }
-
-    .action-button {
-        width: 65px;
-        height: 65px;
-        font-size: 0.7em;
+        padding: 6px;
     }
 }

@@ -7,30 +7,29 @@ const { Server } = require('socket.io');
 // --- Configurações de Rede e Jogo ---
 const app = express();
 const server = http.createServer(app);
-// Otimização de ping para melhor estabilidade de conexão
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] }, pingInterval: 5000, pingTimeout: 10000 }); 
 const PORT = process.env.PORT || 3000;
 
-const MAX_PLAYERS = 2; // Mantido em 2 para o PvP teclado
-const TICK_RATE = 1000 / 60; // 60 Ticks por segundo (Otimização)
+const MAX_PLAYERS = 2; // Mantido em 2 (P1/P2)
+const TICK_RATE = 1000 / 60; // 60 Ticks por segundo
 const performance = global.performance || { now: Date.now }; 
 
-// --- Constantes Físicas (Ajustadas para consistência e jogabilidade) ---
-const CANVAS_WIDTH = 1000;
-const CANVAS_HEIGHT = 750; 
+// --- Constantes Físicas (UNIFICADAS com o game.js do cliente) ---
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 600; 
 const PLAYER_SIZE = 30;
-const PLAYER_SPEED = 4;
-const PLAYER_SPRINT_SPEED_MULTIPLIER = 1.8;
-const ENERGY_COST_SPRINT = 0.8;
-const ENERGY_REGEN_RATE = 1.2;
+const PLAYER_SPEED = 3;
+const PLAYER_SPRINT_SPEED_MULTIPLIER = 1.5;
+const ENERGY_COST_SPRINT = 0.5;
+const ENERGY_REGEN_RATE = 0.8;
 const MAX_HEALTH = 100;
 const MAX_ENERGY = 100;
-const ARROW_SPEED = 18; 
+const ARROW_SPEED = 10;
 const ARROW_SIZE = 10;
-const STARTING_ARROWS = 30;
-const PLAYER_COLORS = ['#e74c3c', '#3498db']; 
+const STARTING_ARROWS = 20;
+const PLAYER_COLORS = ['#e74c3c', '#3498db']; // Cores para P1 e P2
 
-// --- Blueprints das Armas (Use 7 chaves aqui) ---
+// --- Blueprints das Armas (Para Troca 1-7) ---
 const BOW_BLUEPRINTS = {
     NORMAL: { name: "Arco Normal", damage: 10, attackSpeed: 500, projectileColor: '#8b4513', effect: null },
     COMPOSTO: { name: "Arco Composto", damage: 15, attackSpeed: 700, projectileColor: '#5c6f80', effect: null },
@@ -47,8 +46,8 @@ let playerCount = 0;
 let projectiles = {}; 
 let obstacles = []; 
 let lastProjectileId = 0;
-let lastGameLoopTime = performance.now();
 let gameLoopInterval = null; // CRÍTICO: Referência para o loop de jogo
+
 
 // --- Funções Auxiliares (Colisão e Spawns) ---
 function collides(obj1, obj2) {
@@ -58,9 +57,10 @@ function collides(obj1, obj2) {
 
 function generateInitialObstacles() {
     obstacles = []; 
-    obstacles.push({ x: 200, y: 200, width: 50, height: 350, color: '#607d8b', type: 'wall' });
-    obstacles.push({ x: 750, y: 200, width: 50, height: 350, color: '#607d8b', type: 'wall' });
-    obstacles.push({ x: 400, y: 400, width: 200, height: 50, color: '#607d8b', type: 'wall' });
+    // Exemplo de mapa 800x600:
+    obstacles.push({ x: 150, y: 100, width: 50, height: 350, color: '#607d8b', type: 'wall' });
+    obstacles.push({ x: 600, y: 100, width: 50, height: 350, color: '#607d8b', type: 'wall' });
+    obstacles.push({ x: 300, y: 250, width: 200, height: 50, color: '#607d8b', type: 'wall' });
 }
 generateInitialObstacles(); 
 
@@ -77,7 +77,7 @@ function createWeapon(blueprintKey) {
     };
 }
 
-// --- NOVO: Gerenciamento do Game Loop ---
+// --- Gerenciamento do Game Loop (CRÍTICO PARA A ESTABILIDADE) ---
 function startGameLoop() {
     if (!gameLoopInterval) {
         console.log("Iniciando Game Loop...");
@@ -96,17 +96,17 @@ function stopAndResetGame() {
         lastProjectileId = 0;
         
         console.log("Game Loop parado. Resetando estado do jogo.");
-        // Avisa os clientes remanescentes (se houver, por exemplo, o que causou o bug)
-        io.emit('gameReset', 'O servidor reiniciou. Por favor, reconecte para uma nova partida.');
+        // Notifica o cliente (Embora possa não haver clientes, é bom ter)
+        io.emit('gameReset', 'O servidor reiniciou por inatividade. Recarregue para uma nova partida.');
     }
 }
-// ------------------------------------
+// ---------------------------------------------------------------
 
 
 // --- Eventos do Socket.IO (Rede) ---
 io.on('connection', (socket) => {
     let playerNum = 0;
-    // Tenta alocar P1 ou P2 (foco no PvP)
+    // Tenta alocar P1 ou P2
     if (!gamePlayers['P1']) {
         playerNum = 1;
     } else if (!gamePlayers['P2']) {
@@ -164,6 +164,7 @@ io.on('connection', (socket) => {
         player.input = data.keys; 
         
         // --- CÁLCULO DE MIRA AUTOMÁTICA (SERVER-SIDE) ---
+        // P1 mira em P2, P2 mira em P1.
         const targetId = (player.id === 'P1') ? 'P2' : 'P1';
         const targetPlayer = gamePlayers[targetId];
         let shootAngle = 0;
@@ -202,7 +203,7 @@ io.on('connection', (socket) => {
             }
         }
         
-        // Lógica de Troca de Arma
+        // Lógica de Troca de Arma (1-7)
         if (data.switchWeapon) {
             const weaponKeys = Object.keys(BOW_BLUEPRINTS);
             const newWeaponKey = weaponKeys[data.switchWeapon - 1];
@@ -234,10 +235,7 @@ io.on('connection', (socket) => {
 
 // --- Loop Principal do Servidor (Game Loop Autoritário) ---
 function gameLoop() {
-    const now = performance.now();
-    lastGameLoopTime = now;
-
-    // 1. Processamento de Jogadores (Movimento, Limites, Energia)
+    // 1. Processamento de Jogadores (Movimento, Energia)
     for (const id in gamePlayers) {
         let player = gamePlayers[id];
         if (!player.isAlive) continue;
@@ -257,16 +255,19 @@ function gameLoop() {
 
         let currentSpeed = PLAYER_SPEED;
         
+        // Sprint e Energia
         if (player.input.sprint && player.energy > 0) {
             currentSpeed *= PLAYER_SPRINT_SPEED_MULTIPLIER;
             player.energy = Math.max(0, player.energy - ENERGY_COST_SPRINT); 
         } else {
+            // Regeneração de energia (mais lenta se estiver movendo)
             player.energy = Math.min(MAX_ENERGY, player.energy + ENERGY_REGEN_RATE * 0.5); 
         }
 
         player.x += dx * currentSpeed;
         player.y += dy * currentSpeed;
         
+        // Limites do mapa
         player.x = Math.max(0, Math.min(CANVAS_WIDTH - player.width, player.x));
         player.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.y));
     }
@@ -279,6 +280,7 @@ function gameLoop() {
         proj.x += proj.vx;
         proj.y += proj.vy;
         
+        // Colisão com Jogadores
         for (const playerId in gamePlayers) {
             let targetPlayer = gamePlayers[playerId];
             if (targetPlayer.id === proj.ownerId || !targetPlayer.isAlive) continue; 
@@ -295,7 +297,8 @@ function gameLoop() {
             }
         }
         
-        if (proj.x < 0 || proj.x > CANVAS_WIDTH || proj.y < 0 || proj.y > CANVAS_HEIGHT) {
+        // Colisão com Limites (fora da tela)
+        if (proj.x < -20 || proj.x > CANVAS_WIDTH + 20 || proj.y < -20 || proj.y > CANVAS_HEIGHT + 20) {
             projectilesToRemove.push(id);
         }
     }
