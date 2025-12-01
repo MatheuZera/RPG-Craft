@@ -2,355 +2,93 @@
 
 body {
     display: flex;
-    flex-direction: column; /* Coloca os elementos em coluna */
+    flex-direction: column; 
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #1a202c; /* Fundo mais escuro */
+    background-color: #1a202c; 
     margin: 0;
-    overflow: hidden; /* Evita barras de rolagem indesejadas no body */
+    overflow: hidden; 
     font-family: 'Press Start 2P', cursive;
-    color: #e2e8f0; /* Cor de texto mais clara */
+    color: #e2e8f0; 
     position: relative;
-    font-size: 14px; /* Tamanho de fonte base */
+    font-size: 14px;
 }
 
-/* Container para centralizar e gerenciar o tamanho do canvas */
 .game-container {
-    width: 800px; /* Largura fixa do container, ajusta conforme o CANVAS_WIDTH no JS */
-    height: 600px; /* Altura fixa do container, ajusta conforme o CANVAS_HEIGHT no JS */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: auto; /* Centraliza o container */
-    border: 5px solid #f39c12; /* Borda amarela chamativa */
-    box-shadow: 0 0 30px rgba(243, 156, 18, 0.9); /* Efeito de brilho mais forte */
-    background-color: #34495e; /* Cor de fundo do canvas */
-    box-sizing: border-box; 
-    flex-shrink: 0; 
+    width: 100%;
+    max-width: 1200px; /* Limite do mapa */
+    height: auto;
+    border: 5px solid #f39c12;
+    box-shadow: 0 0 30px rgba(243, 156, 18, 0.9);
 }
 
 #gameCanvas {
-    display: block; 
-    width: 100%; 
-    height: 100%; 
-    image-rendering: pixelated; 
-}
-
-
-/* --- GUI dos Jogadores na Cabeça --- */
-.player-head-gui {
-    position: absolute;
-    background-color: rgba(0, 0, 0, 0.7); 
-    padding: 6px 10px; 
-    border-radius: 6px;
-    color: white;
-    font-size: 0.75em; 
-    min-width: 110px; 
-    text-align: center;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4); 
-    pointer-events: none;
-    z-index: 50;
-    white-space: nowrap; 
-    box-sizing: border-box; 
-}
-
-.player-head-gui h3 {
-    margin: 0 0 4px 0; 
-    font-size: 1.1em; 
-    letter-spacing: 0.5px; 
-}
-
-.bar-container {
-    background-color: #444; 
-    height: 9px; 
-    border-radius: 4px;
-    margin-bottom: 4px;
-    overflow: hidden;
-    border: 1px solid #333; 
-}
-
-.health-bar, .energy-bar {
-    height: 100%;
+    display: block;
     width: 100%;
-    border-radius: 4px;
-    transition: width 0.1s ease-out, background-color 0.3s ease;
+    height: auto;
 }
 
-.health-bar {
-    background-color: #e74c3c;
-}
-
-.health-bar.critical {
-    animation: pulseRed 0.5s infinite alternate;
-}
-
-@keyframes pulseRed {
-    from { background-color: #e74c3c; }
-    to { background-color: #c0392b; }
-}
-
-
-.energy-bar {
-    background-color: #3498db;
-}
-
-.ammo-display, .weapon-display {
-    margin-top: 6px; 
-    font-size: 0.8em; 
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: flex; 
-    align-items: center;
-    justify-content: center;
-}
-
-.ammo-display strong {
-    margin-left: 4px;
-    color: #f39c12; 
-}
-
-
-/* --- Mensagens de Jogo --- */
-#messages {
+/* --- Mensagens e Status de Gamepad --- */
+#messages, #gamepad-status {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 280px; 
-    background-color: rgba(0, 0, 0, 0.75); 
-    border-radius: 10px; 
-    padding: 12px; 
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.6); 
-    max-height: 85%; 
-    overflow-y: auto;
-    z-index: 100;
-    font-size: 0.8em;
-}
-
-.message {
-    background-color: #2d3748; 
-    color: #e2e8f0;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
     padding: 10px;
-    margin-bottom: 8px; 
-    border-radius: 6px;
-    font-size: 0.9em; 
-    animation: fadeInOut 2.5s forwards;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    border-radius: 5px;
+    max-width: 300px;
+    z-index: 10;
 }
-
-@keyframes fadeInOut {
-    0% { opacity: 0; }
-    10% { opacity: 1; }
-    90% { opacity: 1; }
-    100% { opacity: 0; display: none; }
-}
-
-/* --- Status do Gamepad --- */
 #gamepad-status {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background-color: rgba(0, 0, 0, 0.75);
-    border-radius: 10px;
-    padding: 12px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
-    z-index: 100;
-    font-size: 0.85em;
-    min-width: 200px;
+    right: 320px;
 }
 
-#gamepad-status p {
-    margin: 6px 0; 
-    display: flex;
-    align-items: center;
-    gap: 8px; 
-}
-
-#gamepad-status .connected {
-    color: #2ecc71;
-}
-
-#gamepad-status .disconnected {
-    color: #e74c3c;
-}
-
-#gamepad-status .status-icon::before {
-    content: '●'; 
-    font-size: 1.2em;
-    line-height: 1;
-}
-#gamepad-status .connected .status-icon::before {
-    color: #2ecc71;
-}
-#gamepad-status .disconnected .status-icon::before {
-    color: #e74c3c;
-}
-
-
-/* --- Controles dos Jogadores (Container Principal) --- */
-#controls-container {
-    position: fixed; 
-    bottom: 0; 
-    left: 0; 
-    width: 100%; 
-    
-    display: flex; 
-    flex-direction: row; 
-    justify-content: center; 
-    align-items: flex-end; 
-
-    gap: 8px; 
-    padding: 8px 15px; 
-    background-color: rgba(0, 0, 0, 0.9); 
-    border-top: 2px solid #f39c12; 
-    border-radius: 0; 
-    box-shadow: 0 -5px 20px rgba(243, 156, 18, 0.7); 
-    z-index: 100;
-    
-    overflow-x: auto; 
-    white-space: nowrap; 
-    box-sizing: border-box; 
-}
-
-.player-controls-display {
-    background-color: #2d3748;
-    border: 1px solid #4a5568;
-    border-radius: 6px; 
-    padding: 8px; 
-    min-width: 150px; 
-    max-width: 200px; 
-    text-align: left;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3); 
-    transition: transform 0.2s ease-in-out, background-color 0.2s ease;
-    flex-shrink: 0; 
-}
-
-.player-controls-display:hover {
-    transform: translateY(-3px); 
-    background-color: #3a475a;
-}
-
-.player-controls-display h4 {
-    margin-top: 0;
-    margin-bottom: 6px; 
-    font-size: 0.85em; 
-    text-align: center;
-    padding-bottom: 3px;
-    border-bottom: 1px dashed rgba(255,255,255,0.15); 
-}
-
-/* Cores específicas para os títulos dos players */
-#player1-controls h4 { color: #e74c3c; } 
-#player2-controls h4 { color: #3498db; } 
-#player3-controls h4 { color: #2ecc71; } 
-#player4-controls h4 { color: #f1c40f; } 
-
-.controls-grid {
-    display: flex; 
-    flex-direction: column; 
-    gap: 4px; 
-}
-
-.control-item {
+/* --- Joysticks Virtuais (TOUCH) --- */
+#touch-controls-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 150px; /* Altura da área de toque */
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    background-color: #232931;
-    padding: 3px 6px; 
-    border-radius: 3px; 
-    border: 1px solid #3a404d;
+    padding: 0 20px 20px;
+    box-sizing: border-box;
+    pointer-events: none; /* Permite interações abaixo se não estiver tocando nos joysticks */
+    z-index: 100;
 }
 
-.control-item .label {
-    font-size: 0.75em; 
-    color: #cbd5e0;
-    margin-right: 5px;
-    flex-shrink: 0; 
+.joystick-area {
+    width: 150px;
+    height: 150px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    position: relative;
+    pointer-events: all; /* Ativa a interação para esta área */
 }
 
-.keys {
-    display: flex;
-    gap: 2px; 
-    flex-wrap: nowrap; 
-    justify-content: flex-end;
-    font-size: 0.65em; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    min-width: 40px; 
+.joystick-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
 }
 
-kbd {
-    background-color: #4a5568;
-    border: 1px solid #718096;
-    padding: 2px 4px; 
-    border-radius: 3px;
-    white-space: nowrap;
-    box-shadow: 1px 1px 1px rgba(0,0,0,0.2); 
-    color: #e2e8f0;
-    min-width: unset; 
-    text-align: center;
-    line-height: 1.2; 
-    height: 1.6em; 
-    display: flex; 
-    align-items: center;
-    justify-content: center;
+/* Esconde os Joysticks em Telas Grandes (Desktop) */
+@media (min-width: 1024px) {
+    #touch-controls-container {
+        display: none;
+    }
 }
-
-.keys.compact-movement kbd {
-    min-width: unset;
-    padding: 2px 4px; 
-}
-.keys.compact-movement kbd:not(:last-child) {
-    margin-right: 0;
-}
-
-@media (max-width: 1000px) {
+/* Mostra os Joysticks em Telas Pequenas (Mobile) */
+@media (max-width: 1023px) {
     #controls-container {
-        gap: 6px; 
-        padding: 6px 10px;
-    }
-    .player-controls-display {
-        min-width: 130px; 
-        padding: 6px;
-    }
-    .player-head-gui {
-        font-size: 0.65em;
-        min-width: 80px;
-        padding: 3px 5px;
-    }
-}
-
-@media (max-width: 768px) {
-    #controls-container {
-        padding: 4px 8px; 
-        gap: 4px; 
-    }
-
-    .player-controls-display {
-        min-width: 110px; 
-        padding: 5px;
-        border-radius: 4px;
-    }
-    .player-head-gui {
-        font-size: 0.6em;
-        min-width: 70px;
-        padding: 3px 5px;
-    }
-
-    #messages, #gamepad-status {
-        position: static; 
-        width: calc(100% - 20px); 
-        max-height: 100px; 
-        margin: 5px auto; 
-        font-size: 0.7em;
-        padding: 6px;
-        border-radius: 8px;
-    }
-
-    .game-container {
-        width: 98vw; 
-        height: calc(98vw * 0.75); 
-        margin-top: 10px; 
+        display: none; /* Esconde a lista de controles de teclado no mobile */
     }
 }

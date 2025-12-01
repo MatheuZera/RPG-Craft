@@ -1,7 +1,7 @@
 {
-  "name": "multiplayer-shooter-6-players",
+  "name": "bow-shooter-multiplayer",
   "version": "1.0.0",
-  "description": "Multiplayer Shooter Game with Socket.IO",
+  "description": "Multiplayer Archery Shooter Game with elementals",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
