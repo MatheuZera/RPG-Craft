@@ -3,7 +3,7 @@
 /* --- Configurações Gerais --- */
 body {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; 
     justify-content: center;
     align-items: center;
     min-height: 100vh;
@@ -15,14 +15,14 @@ body {
     position: relative;
     font-size: 14px; 
     padding: 10px;
-    user-select: none; /* Previne seleção de texto, bom para jogos touch */
-    -webkit-tap-highlight-color: transparent; /* Remove o destaque de toque no mobile */
+    user-select: none;
+    -webkit-tap-highlight-color: transparent; 
 }
 
 /* --- Canvas e Contêiner do Jogo (Arena) --- */
 
 .game-container {
-    /* Proporção 1000x750 (4:3) para a arena */
+    /* Usando a proporção de 1000x750 (4:3) para a "distância de câmera" */
     width: 1000px; 
     height: 750px; 
     max-width: 95vw; 
@@ -32,14 +32,14 @@ body {
     align-items: center;
     border: 5px solid #f39c12; 
     box-shadow: 0 0 30px rgba(243, 156, 18, 0.9); 
-    aspect-ratio: 4 / 3; /* Garante a proporção correta no redimensionamento */
+    aspect-ratio: 4 / 3; 
 }
 
 #gameCanvas {
     width: 100%;
     height: 100%;
     display: block;
-    touch-action: none; /* Desativa ações padrão de toque no canvas */
+    touch-action: none; 
 }
 
 /* --- Display de Mensagens (Chat) --- */
@@ -148,7 +148,7 @@ kbd {
     width: 120px;
     height: 120px;
     z-index: 1000;
-    display: none; /* Escondido por padrão, ativado via JS no mobile */
+    display: none; 
 }
 
 .joystick-base {
@@ -158,7 +158,7 @@ kbd {
     transform: translate(-50%, -50%);
     width: 100%;
     height: 100%;
-    background-color: rgba(74, 85, 104, 0.5); /* Semi-transparente */
+    background-color: rgba(74, 85, 104, 0.5); 
     border-radius: 50%;
     border: 2px solid #a0aec0;
 }
@@ -179,7 +179,7 @@ kbd {
     position: fixed;
     bottom: 30px;
     right: 30px;
-    display: none; /* Escondido por padrão, ativado via JS no mobile */
+    display: none; 
     flex-direction: row;
     gap: 20px;
     z-index: 1000;
@@ -199,13 +199,13 @@ kbd {
 }
 
 .shoot {
-    background-color: #e74c3c; /* Vermelho */
+    background-color: #e74c3c; 
     border-color: #c0392b;
     box-shadow: 0 4px 0 #c0392b;
 }
 
 .sprint {
-    background-color: #3498db; /* Azul */
+    background-color: #3498db; 
     border-color: #2980b9;
     box-shadow: 0 4px 0 #2980b9;
 }
@@ -215,23 +215,21 @@ kbd {
     box-shadow: 0 2px 0 #c0392b;
 }
 
-/* --- Responsividade (Melhora a visualização em Mobile) --- */
+/* --- Responsividade (Mobile) --- */
 
 @media (max-width: 1050px) {
-    /* Garante que o container use a largura máxima da tela para afastar a "câmera" */
+    
     .game-container {
         width: 98vw;
-        height: unset; /* Deixa o aspect-ratio controlar a altura */
+        height: unset; 
         max-width: 98vw;
         margin: 5px auto;
     }
     
-    /* Esconde controles de teclado/gamepad no mobile */
     #controls-container {
         display: none; 
     }
 
-    /* Mensagens no mobile */
     #messages {
         position: static;
         width: 95%; 

@@ -1,4 +1,4 @@
-// server.js (SERVIDOR AUTORITÁRIO - 2 JOGADORES, MIRA AUTOMÁTICA, OTIMIZADO)
+// server.js
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -7,34 +7,38 @@ const { Server } = require('socket.io');
 // --- Configurações de Rede e Jogo ---
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+// Otimização de ping para melhor estabilidade de conexão
+const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] }, pingInterval: 5000, pingTimeout: 10000 }); 
 const PORT = process.env.PORT || 3000;
 
-const MAX_PLAYERS = 2;
-const TICK_RATE = 1000 / 60; // 60 Ticks por segundo
+const MAX_PLAYERS = 2; // Mantido em 2 para o PvP teclado
+const TICK_RATE = 1000 / 60; // 60 Ticks por segundo (Otimização)
 const performance = global.performance || { now: Date.now }; 
 
-// --- Constantes Físicas (Mantidas do setup anterior) ---
+// --- Constantes Físicas (Ajustadas para consistência e jogabilidade) ---
 const CANVAS_WIDTH = 1000;
 const CANVAS_HEIGHT = 750; 
 const PLAYER_SIZE = 30;
-const PLAYER_SPEED = 4; // Ligeiramente mais rápido para melhor jogabilidade
+const PLAYER_SPEED = 4;
 const PLAYER_SPRINT_SPEED_MULTIPLIER = 1.8;
 const ENERGY_COST_SPRINT = 0.8;
 const ENERGY_REGEN_RATE = 1.2;
 const MAX_HEALTH = 100;
 const MAX_ENERGY = 100;
-const ARROW_SPEED = 18; // Flechas mais rápidas
+const ARROW_SPEED = 18; 
 const ARROW_SIZE = 10;
 const STARTING_ARROWS = 30;
 const PLAYER_COLORS = ['#e74c3c', '#3498db']; 
 
-// --- Blueprints das Armas (Mantenha as suas 7 armas aqui) ---
+// --- Blueprints das Armas (Use 7 chaves aqui) ---
 const BOW_BLUEPRINTS = {
     NORMAL: { name: "Arco Normal", damage: 10, attackSpeed: 500, projectileColor: '#8b4513', effect: null },
-    // Adicione suas outras 6 armas aqui para que o switch funcione. Ex:
-    // COMPOSTO: { name: "Composto", damage: 15, attackSpeed: 700, projectileColor: '#5c6f80', effect: null },
-    // BESTA: { name: "Besta", damage: 20, attackSpeed: 1200, projectileColor: '#444444', effect: null },
+    COMPOSTO: { name: "Arco Composto", damage: 15, attackSpeed: 700, projectileColor: '#5c6f80', effect: null },
+    BESTA: { name: "Besta", damage: 20, attackSpeed: 1200, projectileColor: '#444444', effect: null },
+    LONGBOW: { name: "Long Bow", damage: 12, attackSpeed: 600, projectileColor: '#b8860b', effect: null },
+    SHORTBOW: { name: "Short Bow", damage: 8, attackSpeed: 350, projectileColor: '#9acd32', effect: null },
+    IMPACTO: { name: "Arco de Impacto", damage: 14, attackSpeed: 800, projectileColor: '#ff4500', effect: null },
+    GELO: { name: "Arco de Gelo", damage: 9, attackSpeed: 450, projectileColor: '#add8e6', effect: 'slow' },
 };
 
 // --- Estado Global do Servidor ---
@@ -44,6 +48,7 @@ let projectiles = {};
 let obstacles = []; 
 let lastProjectileId = 0;
 let lastGameLoopTime = performance.now();
+let gameLoopInterval = null; // CRÍTICO: Referência para o loop de jogo
 
 // --- Funções Auxiliares (Colisão e Spawns) ---
 function collides(obj1, obj2) {
@@ -52,6 +57,7 @@ function collides(obj1, obj2) {
 }
 
 function generateInitialObstacles() {
+    obstacles = []; 
     obstacles.push({ x: 200, y: 200, width: 50, height: 350, color: '#607d8b', type: 'wall' });
     obstacles.push({ x: 750, y: 200, width: 50, height: 350, color: '#607d8b', type: 'wall' });
     obstacles.push({ x: 400, y: 400, width: 200, height: 50, color: '#607d8b', type: 'wall' });
@@ -60,7 +66,7 @@ generateInitialObstacles();
 
 function createWeapon(blueprintKey) {
     const blueprint = BOW_BLUEPRINTS[blueprintKey];
-    if (!blueprint) return createWeapon('NORMAL'); // Fallback
+    if (!blueprint) return createWeapon('NORMAL'); 
     return {
         name: blueprint.name,
         damage: blueprint.damage,
@@ -71,9 +77,36 @@ function createWeapon(blueprintKey) {
     };
 }
 
+// --- NOVO: Gerenciamento do Game Loop ---
+function startGameLoop() {
+    if (!gameLoopInterval) {
+        console.log("Iniciando Game Loop...");
+        gameLoopInterval = setInterval(gameLoop, TICK_RATE);
+    }
+}
+
+function stopAndResetGame() {
+    if (gameLoopInterval) {
+        clearInterval(gameLoopInterval);
+        gameLoopInterval = null;
+        
+        // Limpeza do estado do jogo
+        gamePlayers = {}; 
+        projectiles = {};
+        lastProjectileId = 0;
+        
+        console.log("Game Loop parado. Resetando estado do jogo.");
+        // Avisa os clientes remanescentes (se houver, por exemplo, o que causou o bug)
+        io.emit('gameReset', 'O servidor reiniciou. Por favor, reconecte para uma nova partida.');
+    }
+}
+// ------------------------------------
+
+
 // --- Eventos do Socket.IO (Rede) ---
 io.on('connection', (socket) => {
     let playerNum = 0;
+    // Tenta alocar P1 ou P2 (foco no PvP)
     if (!gamePlayers['P1']) {
         playerNum = 1;
     } else if (!gamePlayers['P2']) {
@@ -88,6 +121,12 @@ io.on('connection', (socket) => {
 
     const playerId = `P${playerNum}`;
     playerCount++;
+    console.log(`Novo jogador conectado: ${playerId}. Total: ${playerCount}`);
+    
+    // Inicia o Game Loop quando o primeiro jogador se conecta
+    if (playerCount === 1) {
+        startGameLoop();
+    }
     
     // Posição inicial
     const startX = (playerNum === 1) ? 100 : CANVAS_WIDTH - 100 - PLAYER_SIZE;
@@ -106,12 +145,9 @@ io.on('connection', (socket) => {
         energy: MAX_ENERGY,
         arrows: STARTING_ARROWS,
         isAlive: true,
-        // Simplificado: input é apenas keys e shoot
         input: { up: false, down: false, left: false, right: false, sprint: false },
         equippedWeapon: createWeapon('NORMAL'),
     };
-
-    console.log(`Novo jogador conectado: ${playerId}`);
 
     socket.emit('playerData', { 
         id: playerId, players: gamePlayers, obstacles: obstacles, mapWidth: CANVAS_WIDTH, mapHeight: CANVAS_HEIGHT
@@ -125,7 +161,6 @@ io.on('connection', (socket) => {
         let player = gamePlayers[socket.playerGameId];
         if (!player || !player.isAlive) return;
 
-        // Atualiza o input de movimento e corrida
         player.input = data.keys; 
         
         // --- CÁLCULO DE MIRA AUTOMÁTICA (SERVER-SIDE) ---
@@ -137,10 +172,6 @@ io.on('connection', (socket) => {
             const dx = targetPlayer.x + targetPlayer.width / 2 - (player.x + player.width / 2);
             const dy = targetPlayer.y + targetPlayer.height / 2 - (player.y + player.height / 2);
             shootAngle = Math.atan2(dy, dx);
-        } else {
-             // Se não houver alvo, atira para a direção em que o jogador está (ou padrão)
-             // Para o PvP 1v1, isso não deve acontecer se ambos estiverem conectados.
-             shootAngle = 0; 
         }
 
         // Lógica de Tiro (Autoritária)
@@ -166,7 +197,7 @@ io.on('connection', (socket) => {
                     vy: projVy,
                     damage: weapon.damage,
                     color: weapon.projectileColor,
-                    effect: weapon.effect // Se tiver lógica de efeito
+                    effect: weapon.effect
                 };
             }
         }
@@ -190,15 +221,12 @@ io.on('connection', (socket) => {
             playerCount--;
             io.emit('playerDisconnected', playerIdToRemove);
             io.emit('message', `${player.name} saiu do jogo.`);
-            console.log(`Jogador desconectado: ${player.name}`);
+            console.log(`Jogador desconectado: ${player.name}. Total: ${playerCount}`);
         }
         
-        // Reinicia o jogo se ambos os jogadores saírem (opcional)
+        // CRÍTICO: Para o loop de jogo e limpa o estado se a contagem for zero
         if (playerCount === 0) {
-            console.log("Reiniciando estado do jogo.");
-            projectiles = {};
-            lastProjectileId = 0;
-            // Opcional: Chamar uma função para reiniciar o estado completamente.
+            stopAndResetGame();
         }
     });
 });
@@ -207,10 +235,9 @@ io.on('connection', (socket) => {
 // --- Loop Principal do Servidor (Game Loop Autoritário) ---
 function gameLoop() {
     const now = performance.now();
-    const deltaTime = (now - lastGameLoopTime) / 1000; 
     lastGameLoopTime = now;
 
-    // --- 1. Processamento de Jogadores (Movimento, Energia) ---
+    // 1. Processamento de Jogadores (Movimento, Limites, Energia)
     for (const id in gamePlayers) {
         let player = gamePlayers[id];
         if (!player.isAlive) continue;
@@ -230,23 +257,21 @@ function gameLoop() {
 
         let currentSpeed = PLAYER_SPEED;
         
-        // Lógica de Sprint e Energia
         if (player.input.sprint && player.energy > 0) {
             currentSpeed *= PLAYER_SPRINT_SPEED_MULTIPLIER;
             player.energy = Math.max(0, player.energy - ENERGY_COST_SPRINT); 
         } else {
-            player.energy = Math.min(MAX_ENERGY, player.energy + ENERGY_REGEN_RATE * 0.5); // Regeneração mais lenta
+            player.energy = Math.min(MAX_ENERGY, player.energy + ENERGY_REGEN_RATE * 0.5); 
         }
 
         player.x += dx * currentSpeed;
         player.y += dy * currentSpeed;
         
-        // Limites do Mapa
         player.x = Math.max(0, Math.min(CANVAS_WIDTH - player.width, player.x));
         player.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.y));
     }
 
-    // --- 2. Movimento e Colisão de Projéteis ---
+    // 2. Movimento e Colisão de Projéteis
     let projectilesToRemove = [];
     
     for (const id in projectiles) {
@@ -254,7 +279,6 @@ function gameLoop() {
         proj.x += proj.vx;
         proj.y += proj.vy;
         
-        // Colisão com Jogadores
         for (const playerId in gamePlayers) {
             let targetPlayer = gamePlayers[playerId];
             if (targetPlayer.id === proj.ownerId || !targetPlayer.isAlive) continue; 
@@ -271,7 +295,6 @@ function gameLoop() {
             }
         }
         
-        // Limites do Mapa
         if (proj.x < 0 || proj.x > CANVAS_WIDTH || proj.y < 0 || proj.y > CANVAS_HEIGHT) {
             projectilesToRemove.push(id);
         }
@@ -279,16 +302,12 @@ function gameLoop() {
     
     projectilesToRemove.forEach(id => delete projectiles[id]);
 
-
-    // --- 3. Sincronização (Broadcast) ---
+    // 3. Sincronização (Broadcast)
     io.emit('gameStateUpdate', {
         players: gamePlayers,
         projectiles: projectiles,
     });
 }
-
-// Inicia o Game Loop
-setInterval(gameLoop, TICK_RATE);
 
 
 // --- Inicia o Servidor HTTP ---
