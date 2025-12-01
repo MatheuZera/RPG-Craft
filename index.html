@@ -12,44 +12,46 @@
         <canvas id="gameCanvas"></canvas>
     </div>
 
+    <div id="joystick-move" class="joystick-container">
+        <div class="joystick-base"></div>
+        <div class="joystick-handle"></div>
+    </div>
+    
+    <div id="joystick-action" class="joystick-actions">
+        <button id="btn-b" class="action-button sprint">B (Correr)</button>
+        <button id="btn-a" class="action-button shoot">A (Atirar)</button>
+    </div>
+
     <div id="messages"></div>
 
     <div id="controls-container">
         <div id="player1-controls" class="player-controls-display">
             <h4>P1 (Teclado)</h4>
             <div class="controls-grid">
-                <div class="control-item">
-                    <span class="label">Mover</span>
-                    <div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Atirar</span>
-                    <div class="keys"><kbd>C</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Correr</span>
-                    <div class="keys"><kbd>F</kbd></div>
-                </div>
+                <div class="control-item"><span class="label">Mover</span><div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div></div>
+                <div class="control-item"><span class="label">Atirar</span><div class="keys"><kbd>C</kbd></div></div>
+                <div class="control-item"><span class="label">Correr</span><div class="keys"><kbd>F</kbd></div></div>
             </div>
         </div>
 
         <div id="player2-controls" class="player-controls-display">
             <h4>P2 (Teclado)</h4>
             <div class="controls-grid">
-                <div class="control-item">
-                    <span class="label">Mover</span>
-                    <div class="keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Atirar</span>
-                    <div class="keys"><kbd>L</kbd></div>
-                </div>
-                <div class="control-item">
-                    <span class="label">Correr</span>
-                    <div class="keys"><kbd>P</kbd></div>
-                </div>
+                <div class="control-item"><span class="label">Mover</span><div class="keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></div></div>
+                <div class="control-item"><span class="label">Atirar</span><div class="keys"><kbd>L</kbd></div></div>
+                <div class="control-item"><span class="label">Correr</span><div class="keys"><kbd>P</kbd></div></div>
             </div>
         </div>
+        
+        <div id="player3-controls" class="player-controls-display">
+            <h4>P3 (Gamepad)</h4>
+            <div class="controls-grid">
+                <div class="control-item"><span class="label">Mover</span><div class="keys">Joystick Esquerdo</div></div>
+                <div class="control-item"><span class="label">Atirar</span><div class="keys"><kbd>X (A)</kbd></div></div>
+                <div class="control-item"><span class="label">Correr</span><div class="keys"><kbd>△ (Y)</kbd></div></div>
+            </div>
+        </div>
+
     </div>
     
     <script src="/socket.io/socket.io.js"></script> 
