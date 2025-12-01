@@ -1,4 +1,4 @@
-// server.js (6 Jogadores)
+// server.js (SERVIDOR AUTORITÁRIO - 6 JOGADORES)
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -8,20 +8,17 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: {
-        origin: "*", 
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 const PORT = process.env.PORT || 3000;
-const MAX_PLAYERS = 6; // *** AQUI ESTÁ O LIMITE PARA 6 JOGADORES ***
-const TICK_RATE = 1000 / 30; 
+const MAX_PLAYERS = 6; // *** LIMITE PARA 6 JOGADORES ***
+const TICK_RATE = 1000 / 60; // 60 ticks por segundo para a física
 const performance = global.performance || { now: Date.now }; 
 
-// --- Constantes do Jogo ---
-const CANVAS_WIDTH = 1000; // Aumentei o mapa para 6 jogadores
-const CANVAS_HEIGHT = 800; // Aumentei o mapa para 6 jogadores
+// --- Constantes do Jogo (Valores do seu game.js original, ajustados) ---
+const CANVAS_WIDTH = 1000; // Mapa maior para 6 jogadores
+const CANVAS_HEIGHT = 800; // Mapa maior para 6 jogadores
 const PLAYER_SIZE = 30;
 const PLAYER_SPEED = 3;
 const PLAYER_SPRINT_SPEED_MULTIPLIER = 1.5;
@@ -32,6 +29,7 @@ const MAX_ENERGY = 100;
 const STARTING_ARROWS = 20;
 const ARROW_SPEED = 10;
 const ARROW_SIZE = 10;
+
 const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c']; // 6 Cores
 const BOW_BLUEPRINTS = {
     LONGBOW: { name: "Arco Longo", damage: 15, attackSpeed: 600, durability: 50, projectileColor: '#8b4513' },
@@ -41,19 +39,25 @@ const BOW_BLUEPRINTS = {
 // --- Estado Global do Servidor ---
 let gamePlayers = {}; 
 let playerCount = 0;
-let playerCounter = 1; 
+let playerCounter = 1; // Contador sequencial para nomear P1, P2, etc.
 let projectiles = {}; 
 let obstacles = []; 
 let pickups = {}; 
 let lastProjectileId = 0;
+let lastPickupId = 0;
+let lastGameLoopTime = performance.now();
+const PICKUP_SPAWN_INTERVAL = 5000;
+const MAX_PICKUPS = 5;
+let lastPickupSpawnTime = 0;
+
+
+// --- Funções Auxiliares de Jogo ---
 
 function getNewProjectileId() { return `proj_${lastProjectileId++}_${Date.now()}`; }
-
-let lastGameLoopTime = performance.now();
-
-// --- Funções Auxiliares (Colisão e Arma) ---
+function getNewPickupId() { return `pickup_${lastPickupId++}_${Date.now()}`; }
 
 function collides(obj1, obj2) {
+    // Sua função de colisão (AABB)
     return obj1.x < obj2.x + obj2.width &&
            obj1.x + obj1.width > obj2.x &&
            obj1.y < obj2.y + obj2.height &&
@@ -71,12 +75,47 @@ function createWeaponFromBlueprint(blueprint) {
     };
 }
 
+// Cria a lista de obstáculos iniciais (Aumentei o mapa para 1000x800)
 function generateInitialObstacles() {
     obstacles.push({ x: 250, y: 250, width: 50, height: 100, color: '#95a5a6', type: 'wall' });
     obstacles.push({ x: 500, y: 100, width: 150, height: 30, color: '#95a5a6', type: 'wall' });
-    obstacles.push({ x: 750, y: 500, width: 80, height: 80, color: '#95a5a6', type: 'wall' }); // Novo obstáculo
+    obstacles.push({ x: 750, y: 500, width: 80, height: 80, color: '#95a5a6', type: 'wall' }); 
+    obstacles.push({ x: 100, y: 550, width: 100, height: 50, color: '#95a5a6', type: 'wall' }); // Mais um
 }
 generateInitialObstacles(); 
+
+function spawnPickup() {
+    if (Object.keys(pickups).length >= MAX_PICKUPS) return;
+
+    const pickupTypes = ['health', 'arrows', 'energy'];
+    const type = pickupTypes[Math.floor(Math.random() * pickupTypes.length)];
+    
+    let validPosition = false;
+    let x, y;
+
+    // Tenta encontrar uma posição que não colida com nada
+    for (let i = 0; i < 50; i++) {
+        x = Math.random() * (CANVAS_WIDTH - 20);
+        y = Math.random() * (CANVAS_HEIGHT - 20);
+        const newPickup = { x: x, y: y, width: 20, height: 20, type: type, id: 'temp' };
+        
+        validPosition = true;
+        for (const obs of obstacles) {
+            if (collides(newPickup, obs)) {
+                validPosition = false;
+                break;
+            }
+        }
+        if (validPosition) break;
+    }
+
+    if (validPosition) {
+        const id = getNewPickupId();
+        pickups[id] = { id: id, x: x, y: y, width: 20, height: 20, type: type };
+        io.emit('message', `Um item de ${type} apareceu!`);
+    }
+}
+
 
 // --- Roteamento e Inicialização ---
 app.use(express.static(path.join(__dirname))); 
@@ -94,6 +133,7 @@ io.on('connection', (socket) => {
     playerCount++;
     const playerNum = playerCounter++;
     
+    // Spawna o novo jogador
     gamePlayers[playerId] = {
         id: playerId,
         name: `P${playerNum}`, 
@@ -101,7 +141,7 @@ io.on('connection', (socket) => {
         y: Math.random() * (CANVAS_HEIGHT - PLAYER_SIZE),
         width: PLAYER_SIZE,
         height: PLAYER_SIZE,
-        color: PLAYER_COLORS[playerNum - 1] || '#ccc', // Usa a lista de 6 cores
+        color: PLAYER_COLORS[playerNum - 1] || '#ccc', 
         health: MAX_HEALTH,
         energy: MAX_ENERGY,
         arrows: STARTING_ARROWS,
@@ -110,8 +150,9 @@ io.on('connection', (socket) => {
         input: { up: false, down: false, left: false, right: false, sprint: false }
     };
 
-    console.log(`Novo jogador conectado: ${gamePlayers[playerId].name} (ID: ${playerId})`);
+    console.log(`Novo jogador conectado: ${gamePlayers[playerId].name}`);
 
+    // Envia o estado inicial para o novo jogador
     socket.emit('playerData', { 
         id: playerId, 
         players: gamePlayers,
@@ -128,8 +169,8 @@ io.on('connection', (socket) => {
 
         player.input = data.keys; 
         
-        // Lógica de Tiro (Autoritária) - Permanece igual.
-        if (data.shoot && player.arrows > 0) {
+        // Lógica de Tiro (Autoritária)
+        if ((data.shoot || player.input.shoot) && player.arrows > 0) {
             const weapon = player.equippedWeapon;
             const now = performance.now();
             
@@ -168,6 +209,12 @@ io.on('connection', (socket) => {
             playerCount--;
             io.emit('playerDisconnected', playerId);
             io.emit('message', `${player.name} saiu do jogo.`);
+            
+            // Verifica o fim do jogo após a desconexão
+            const aliveCount = Object.values(gamePlayers).filter(p => p.isAlive).length;
+            if (aliveCount <= 1 && playerCount > 0) {
+                io.emit('gameOver', Object.values(gamePlayers).find(p => p.isAlive)?.id);
+            }
         }
     });
 });
@@ -178,7 +225,7 @@ function gameLoop() {
     const deltaTime = (now - lastGameLoopTime) / 1000; 
     lastGameLoopTime = now;
 
-    // --- 1. Movimento dos Jogadores (Lógica Autoritária) ---
+    // --- 1. Movimento dos Jogadores e Colisão com Pickups ---
     for (const id in gamePlayers) {
         let player = gamePlayers[id];
         if (!player.isAlive) continue;
@@ -186,11 +233,13 @@ function gameLoop() {
         let dx = 0;
         let dy = 0;
         
+        // Processa o input (direções)
         if (player.input.up) dy = -1;
         if (player.input.down) dy = 1;
         if (player.input.left) dx = -1;
         if (player.input.right) dx = 1;
-
+        
+        // Normalização de vetor de movimento (para evitar movimento diagonal mais rápido)
         if (dx !== 0 && dy !== 0) {
             const magnitude = Math.sqrt(dx * dx + dy * dy);
             dx /= magnitude;
@@ -202,15 +251,17 @@ function gameLoop() {
         // Lógica de Sprint e Energia
         if (player.input.sprint && player.energy > 0) {
             currentSpeed *= PLAYER_SPRINT_SPEED_MULTIPLIER;
+            // O gasto de energia é constante por segundo
             player.energy = Math.max(0, player.energy - ENERGY_COST_SPRINT * TICK_RATE / 1000 * 60); 
         } else {
+            // A regeneração de energia é constante por segundo
             player.energy = Math.min(MAX_ENERGY, player.energy + ENERGY_REGEN_RATE * TICK_RATE / 1000 * 60); 
         }
 
         let newX = player.x + dx * currentSpeed;
         let newY = player.y + dy * currentSpeed;
 
-        // Colisão com Obstáculos
+        // Colisão com Obstáculos (lógica de deslizamento/parada)
         let canMoveX = true;
         let canMoveY = true;
         
@@ -228,9 +279,30 @@ function gameLoop() {
         // Limites do Mapa
         player.x = Math.max(0, Math.min(CANVAS_WIDTH - player.width, player.x));
         player.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.y));
+        
+        // Colisão com Pickups (Nova lógica)
+        let pickupsToRemove = [];
+        for(const pickupId in pickups) {
+            const pickup = pickups[pickupId];
+            if(collides(player, pickup)) {
+                // Aplica o efeito do pickup
+                if (pickup.type === 'health') {
+                    player.health = Math.min(MAX_HEALTH, player.health + 25);
+                    io.emit('message', `${player.name} pegou Cura! (+25 HP)`);
+                } else if (pickup.type === 'arrows') {
+                    player.arrows += 10;
+                    io.emit('message', `${player.name} pegou Flechas! (+10)`);
+                } else if (pickup.type === 'energy') {
+                    player.energy = MAX_ENERGY;
+                    io.emit('message', `${player.name} pegou Energia! (Max Energy)`);
+                }
+                pickupsToRemove.push(pickupId);
+            }
+        }
+        pickupsToRemove.forEach(id => delete pickups[id]);
     }
-
-    // --- 2. Movimento e Colisão de Projéteis (Lógica Autoritária) ---
+    
+    // --- 2. Movimento e Colisão de Projéteis ---
     let projectilesToRemove = [];
     
     for (const id in projectiles) {
@@ -251,10 +323,10 @@ function gameLoop() {
                 if (targetPlayer.health === 0) {
                     targetPlayer.isAlive = false;
                     io.emit('playerKilled', { targetId: targetPlayer.id, killerId: proj.ownerId });
-                    io.emit('message', `${targetPlayer.name} foi derrotado por ${gamePlayers[proj.ownerId].name}!`);
                     
+                    // Verifica o fim do jogo após a morte
                     const aliveCount = Object.values(gamePlayers).filter(p => p.isAlive).length;
-                    if (aliveCount <= 1) {
+                    if (aliveCount <= 1 && playerCount > 0) {
                         io.emit('gameOver', Object.values(gamePlayers).find(p => p.isAlive)?.id);
                     }
                 }
@@ -278,8 +350,14 @@ function gameLoop() {
     projectilesToRemove.forEach(id => {
         delete projectiles[id];
     });
+    
+    // --- 3. Spawns de Pickups ---
+    if (now - lastPickupSpawnTime > PICKUP_SPAWN_INTERVAL) {
+        spawnPickup();
+        lastPickupSpawnTime = now;
+    }
 
-    // --- 3. Sincronização (Broadcast) ---
+    // --- 4. Sincronização (Broadcast) ---
     io.emit('gameStateUpdate', {
         players: gamePlayers,
         projectiles: projectiles,

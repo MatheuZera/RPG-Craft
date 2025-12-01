@@ -1,7 +1,7 @@
 {
-  "name": "multiplayer-shooter-web",
+  "name": "multiplayer-shooter-6-players",
   "version": "1.0.0",
-  "description": "Servidor para Shooter Game multiplayer com Socket.IO",
+  "description": "Multiplayer Shooter Game with Socket.IO",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
