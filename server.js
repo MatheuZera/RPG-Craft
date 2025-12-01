@@ -1,4 +1,4 @@
-// server.js
+// server.js (6 Jogadores)
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -15,15 +15,13 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const MAX_PLAYERS = 4;
+const MAX_PLAYERS = 6; // *** AQUI ESTÁ O LIMITE PARA 6 JOGADORES ***
 const TICK_RATE = 1000 / 30; 
-// Para que 'performance.now()' funcione no Node.js, ele precisa ser importado, ou usar 'Date.now()'.
-// Usaremos 'Date.now()' para maior compatibilidade no ambiente Node.js.
 const performance = global.performance || { now: Date.now }; 
 
-// --- Constantes do Jogo (Migradas de game.js) ---
-const CANVAS_WIDTH = 800; 
-const CANVAS_HEIGHT = 600; 
+// --- Constantes do Jogo ---
+const CANVAS_WIDTH = 1000; // Aumentei o mapa para 6 jogadores
+const CANVAS_HEIGHT = 800; // Aumentei o mapa para 6 jogadores
 const PLAYER_SIZE = 30;
 const PLAYER_SPEED = 3;
 const PLAYER_SPRINT_SPEED_MULTIPLIER = 1.5;
@@ -34,10 +32,10 @@ const MAX_ENERGY = 100;
 const STARTING_ARROWS = 20;
 const ARROW_SPEED = 10;
 const ARROW_SIZE = 10;
+const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c']; // 6 Cores
 const BOW_BLUEPRINTS = {
     LONGBOW: { name: "Arco Longo", damage: 15, attackSpeed: 600, durability: 50, projectileColor: '#8b4513' },
     SHORTBOW: { name: "Arco Curto", damage: 10, attackSpeed: 300, durability: 70, projectileColor: '#5cb85c' }
-    // Inclua aqui as outras blueprints de arma do seu jogo original
 };
 
 // --- Estado Global do Servidor ---
@@ -47,15 +45,13 @@ let playerCounter = 1;
 let projectiles = {}; 
 let obstacles = []; 
 let pickups = {}; 
-
 let lastProjectileId = 0;
-function getNewProjectileId() {
-    return `proj_${lastProjectileId++}_${Date.now()}`;
-}
+
+function getNewProjectileId() { return `proj_${lastProjectileId++}_${Date.now()}`; }
 
 let lastGameLoopTime = performance.now();
 
-// --- Funções de Lógica (Migradas de game.js) ---
+// --- Funções Auxiliares (Colisão e Arma) ---
 
 function collides(obj1, obj2) {
     return obj1.x < obj2.x + obj2.width &&
@@ -78,6 +74,7 @@ function createWeaponFromBlueprint(blueprint) {
 function generateInitialObstacles() {
     obstacles.push({ x: 250, y: 250, width: 50, height: 100, color: '#95a5a6', type: 'wall' });
     obstacles.push({ x: 500, y: 100, width: 150, height: 30, color: '#95a5a6', type: 'wall' });
+    obstacles.push({ x: 750, y: 500, width: 80, height: 80, color: '#95a5a6', type: 'wall' }); // Novo obstáculo
 }
 generateInitialObstacles(); 
 
@@ -88,7 +85,7 @@ app.use(express.static(path.join(__dirname)));
 io.on('connection', (socket) => {
     
     if (playerCount >= MAX_PLAYERS) {
-        socket.emit('message', 'O jogo está cheio. Máximo de 4 jogadores.');
+        socket.emit('message', `O jogo está cheio. Máximo de ${MAX_PLAYERS} jogadores.`);
         socket.disconnect();
         return;
     }
@@ -104,7 +101,7 @@ io.on('connection', (socket) => {
         y: Math.random() * (CANVAS_HEIGHT - PLAYER_SIZE),
         width: PLAYER_SIZE,
         height: PLAYER_SIZE,
-        color: ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f'][playerNum - 1] || '#ccc',
+        color: PLAYER_COLORS[playerNum - 1] || '#ccc', // Usa a lista de 6 cores
         health: MAX_HEALTH,
         energy: MAX_ENERGY,
         arrows: STARTING_ARROWS,
@@ -118,7 +115,9 @@ io.on('connection', (socket) => {
     socket.emit('playerData', { 
         id: playerId, 
         players: gamePlayers,
-        obstacles: obstacles
+        obstacles: obstacles,
+        mapWidth: CANVAS_WIDTH,
+        mapHeight: CANVAS_HEIGHT
     });
 
     socket.broadcast.emit('message', `${gamePlayers[playerId].name} se juntou ao jogo!`);
@@ -128,7 +127,8 @@ io.on('connection', (socket) => {
         if (!player || !player.isAlive) return;
 
         player.input = data.keys; 
-
+        
+        // Lógica de Tiro (Autoritária) - Permanece igual.
         if (data.shoot && player.arrows > 0) {
             const weapon = player.equippedWeapon;
             const now = performance.now();
@@ -175,11 +175,10 @@ io.on('connection', (socket) => {
 // --- Loop Principal do Servidor (Game Loop Autoritário) ---
 function gameLoop() {
     const now = performance.now();
-    // deltaTime em segundos
     const deltaTime = (now - lastGameLoopTime) / 1000; 
     lastGameLoopTime = now;
 
-    // --- 1. Movimento dos Jogadores ---
+    // --- 1. Movimento dos Jogadores (Lógica Autoritária) ---
     for (const id in gamePlayers) {
         let player = gamePlayers[id];
         if (!player.isAlive) continue;
@@ -203,17 +202,15 @@ function gameLoop() {
         // Lógica de Sprint e Energia
         if (player.input.sprint && player.energy > 0) {
             currentSpeed *= PLAYER_SPRINT_SPEED_MULTIPLIER;
-            // Ajuste a taxa de consumo para ser consistente
             player.energy = Math.max(0, player.energy - ENERGY_COST_SPRINT * TICK_RATE / 1000 * 60); 
         } else {
-            // Ajuste a taxa de regeneração
             player.energy = Math.min(MAX_ENERGY, player.energy + ENERGY_REGEN_RATE * TICK_RATE / 1000 * 60); 
         }
 
         let newX = player.x + dx * currentSpeed;
         let newY = player.y + dy * currentSpeed;
 
-        // Colisão com Obstáculos (Autoritária)
+        // Colisão com Obstáculos
         let canMoveX = true;
         let canMoveY = true;
         
@@ -233,7 +230,7 @@ function gameLoop() {
         player.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.y));
     }
 
-    // --- 2. Movimento e Colisão de Projéteis ---
+    // --- 2. Movimento e Colisão de Projéteis (Lógica Autoritária) ---
     let projectilesToRemove = [];
     
     for (const id in projectiles) {
@@ -242,6 +239,7 @@ function gameLoop() {
         proj.x += proj.vx;
         proj.y += proj.vy;
         
+        // Colisão com Jogadores
         for (const playerId in gamePlayers) {
             let targetPlayer = gamePlayers[playerId];
             if (targetPlayer.id === proj.ownerId || !targetPlayer.isAlive) continue; 
@@ -264,6 +262,7 @@ function gameLoop() {
             }
         }
         
+        // Colisão com Obstáculos e Limites do Mapa
         for (const obs of obstacles) {
             if (collides(proj, obs)) {
                 projectilesToRemove.push(id);
