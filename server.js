@@ -14,7 +14,7 @@ const MAX_PLAYERS = 2; // Mantido em 2 (P1/P2)
 const TICK_RATE = 1000 / 60; // 60 Ticks por segundo
 const performance = global.performance || { now: Date.now }; 
 
-// --- Constantes Físicas (UNIFICADAS com o game.js do cliente) ---
+// --- Constantes Físicas e de Jogo ---
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600; 
 const PLAYER_SIZE = 30;
@@ -29,24 +29,37 @@ const ARROW_SIZE = 10;
 const STARTING_ARROWS = 20;
 const PLAYER_COLORS = ['#e74c3c', '#3498db']; // Cores para P1 e P2
 
-// --- Blueprints das Armas (Para Troca 1-7) ---
+// NOVAS CONSTANTES PARA RESPAWN E PICKUPS
+const RESPAWN_DELAY = 5000; // 5 segundos
+const HEAL_AMOUNT = 30;
+const HEALING_PICKUP_COLOR = '#2ecc71';
+const HEALING_PICKUP_SIZE = 20;
+const PICKUP_SPAWN_INTERVAL = 10000; // 10 segundos
+const MAX_PICKUPS = 2;
+
+
+// --- Blueprints das Armas (Com classe CSS para o cliente) ---
 const BOW_BLUEPRINTS = {
-    NORMAL: { name: "Arco Normal", damage: 10, attackSpeed: 500, projectileColor: '#8b4513', effect: null },
-    COMPOSTO: { name: "Arco Composto", damage: 15, attackSpeed: 700, projectileColor: '#5c6f80', effect: null },
-    BESTA: { name: "Besta", damage: 20, attackSpeed: 1200, projectileColor: '#444444', effect: null },
-    LONGBOW: { name: "Long Bow", damage: 12, attackSpeed: 600, projectileColor: '#b8860b', effect: null },
-    SHORTBOW: { name: "Short Bow", damage: 8, attackSpeed: 350, projectileColor: '#9acd32', effect: null },
-    IMPACTO: { name: "Arco de Impacto", damage: 14, attackSpeed: 800, projectileColor: '#ff4500', effect: null },
-    GELO: { name: "Arco de Gelo", damage: 9, attackSpeed: 450, projectileColor: '#add8e6', effect: 'slow' },
+    NORMAL: { name: "Arco Normal", damage: 10, attackSpeed: 500, projectileColor: '#8b4513', effect: null, cssClass: 'bow-normal' },
+    COMPOSTO: { name: "Arco Composto", damage: 15, attackSpeed: 700, projectileColor: '#5c6f80', effect: null, cssClass: 'bow-composto' },
+    BESTA: { name: "Besta", damage: 20, attackSpeed: 1200, projectileColor: '#444444', effect: null, cssClass: 'bow-besta' },
+    LONGBOW: { name: "Long Bow", damage: 12, attackSpeed: 600, projectileColor: '#b8860b', effect: null, cssClass: 'bow-longbow' },
+    SHORTBOW: { name: "Short Bow", damage: 8, attackSpeed: 350, projectileColor: '#9acd32', effect: null, cssClass: 'bow-shortbow' },
+    IMPACTO: { name: "Arco de Impacto", damage: 14, attackSpeed: 800, projectileColor: '#ff4500', effect: 'stun', cssClass: 'bow-impacto' },
+    GELO: { name: "Arco de Gelo", damage: 9, attackSpeed: 450, projectileColor: '#add8e6', effect: 'slow', cssClass: 'bow-gelo' },
 };
+
 
 // --- Estado Global do Servidor ---
 let gamePlayers = {}; 
 let playerCount = 0;
 let projectiles = {}; 
 let obstacles = []; 
+let pickups = {}; // NOVO: Objeto para rastrear pickups de cura
 let lastProjectileId = 0;
+let lastPickupId = 0;
 let gameLoopInterval = null; 
+let lastPickupSpawnTime = performance.now();
 
 
 // --- Funções Auxiliares (Colisão e Spawns) ---
@@ -57,7 +70,6 @@ function collides(obj1, obj2) {
 
 function generateInitialObstacles() {
     obstacles = []; 
-    // Exemplo de mapa 800x600:
     obstacles.push({ x: 150, y: 100, width: 50, height: 350, color: '#607d8b', type: 'wall' });
     obstacles.push({ x: 600, y: 100, width: 50, height: 350, color: '#607d8b', type: 'wall' });
     obstacles.push({ x: 300, y: 250, width: 200, height: 50, color: '#607d8b', type: 'wall' });
@@ -73,7 +85,39 @@ function createWeapon(blueprintKey) {
         attackSpeed: blueprint.attackSpeed,
         projectileColor: blueprint.projectileColor,
         effect: blueprint.effect,
+        cssClass: blueprint.cssClass, 
         lastAttackTime: 0
+    };
+}
+
+function getRespawnPosition(playerNum) {
+    const startX = (playerNum === 1) ? 100 : CANVAS_WIDTH - 100 - PLAYER_SIZE;
+    const startY = CANVAS_HEIGHT / 2 - PLAYER_SIZE / 2;
+    return { x: startX, y: startY };
+}
+
+function spawnPickup() {
+    if (Object.keys(pickups).length >= MAX_PICKUPS) return;
+
+    const type = 'healing';
+    const x = Math.random() * (CANVAS_WIDTH - HEALING_PICKUP_SIZE);
+    const y = Math.random() * (CANVAS_HEIGHT - HEALING_PICKUP_SIZE);
+
+    // Ignora se colidir com paredes (simples)
+    if (obstacles.some(obs => collides({ x: x, y: y, width: HEALING_PICKUP_SIZE, height: HEALING_PICKUP_SIZE }, obs))) {
+        return; 
+    }
+
+    const pickupId = `p_${lastPickupId++}`;
+    pickups[pickupId] = {
+        id: pickupId,
+        type: type,
+        x: x,
+        y: y,
+        width: HEALING_PICKUP_SIZE,
+        height: HEALING_PICKUP_SIZE,
+        color: HEALING_PICKUP_COLOR,
+        value: HEAL_AMOUNT
     };
 }
 
@@ -90,10 +134,11 @@ function stopAndResetGame() {
         clearInterval(gameLoopInterval);
         gameLoopInterval = null;
         
-        // Limpeza do estado do jogo
         gamePlayers = {}; 
         projectiles = {};
+        pickups = {}; 
         lastProjectileId = 0;
+        lastPickupId = 0;
         
         console.log("Game Loop parado. Resetando estado do jogo.");
         io.emit('gameReset', 'O servidor reiniciou por inatividade. Recarregue para uma nova partida.');
@@ -105,7 +150,6 @@ function stopAndResetGame() {
 // --- Eventos do Socket.IO (Rede) ---
 io.on('connection', (socket) => {
     let playerNum = 0;
-    // Tenta alocar P1 ou P2
     if (!gamePlayers['P1']) {
         playerNum = 1;
     } else if (!gamePlayers['P2']) {
@@ -122,21 +166,18 @@ io.on('connection', (socket) => {
     playerCount++;
     console.log(`Novo jogador conectado: ${playerId}. Total: ${playerCount}`);
     
-    // Inicia o Game Loop quando o primeiro jogador se conecta
     if (playerCount === 1) {
         startGameLoop();
     }
     
-    // Posição inicial
-    const startX = (playerNum === 1) ? 100 : CANVAS_WIDTH - 100 - PLAYER_SIZE;
-    const startY = CANVAS_HEIGHT / 2 - PLAYER_SIZE / 2;
+    const startPos = getRespawnPosition(playerNum);
 
     gamePlayers[playerId] = {
         id: playerId,
         name: playerId, 
         playerNum: playerNum,
-        x: startX, 
-        y: startY,
+        x: startPos.x, 
+        y: startPos.y,
         width: PLAYER_SIZE,
         height: PLAYER_SIZE,
         color: PLAYER_COLORS[playerNum - 1],
@@ -144,12 +185,14 @@ io.on('connection', (socket) => {
         energy: MAX_ENERGY,
         arrows: STARTING_ARROWS,
         isAlive: true,
+        isDead: false, // Flag para morte/respawn
+        respawnStartTime: 0, // Timestamp para respawn
         input: { up: false, down: false, left: false, right: false, sprint: false },
         equippedWeapon: createWeapon('NORMAL'),
     };
 
     socket.emit('playerData', { 
-        id: playerId, players: gamePlayers, obstacles: obstacles, mapWidth: CANVAS_WIDTH, mapHeight: CANVAS_HEIGHT
+        id: playerId, players: gamePlayers, obstacles: obstacles, pickups: pickups, mapWidth: CANVAS_WIDTH, mapHeight: CANVAS_HEIGHT
     });
     socket.join(playerId);
     socket.playerGameId = playerId;
@@ -158,12 +201,11 @@ io.on('connection', (socket) => {
 
     socket.on('playerInput', (data) => {
         let player = gamePlayers[socket.playerGameId];
-        if (!player || !player.isAlive) return;
+        if (!player || player.isDead) return; // Impede input se o player estiver morto/respawnando
 
         player.input = data.keys; 
         
-        // --- CÁLCULO DE MIRA AUTOMÁTICA (SERVER-SIDE) ---
-        // P1 mira em P2, P2 mira em P1.
+        // CÁLCULO DE MIRA AUTOMÁTICA
         const targetId = (player.id === 'P1') ? 'P2' : 'P1';
         const targetPlayer = gamePlayers[targetId];
         let shootAngle = 0;
@@ -174,7 +216,7 @@ io.on('connection', (socket) => {
             shootAngle = Math.atan2(dy, dx);
         }
 
-        // Lógica de Tiro (Autoritária)
+        // Lógica de Tiro
         if (data.shoot && player.arrows > 0) {
             const weapon = player.equippedWeapon;
             const now = performance.now();
@@ -224,7 +266,6 @@ io.on('connection', (socket) => {
             console.log(`Jogador desconectado: ${player.name}. Total: ${playerCount}`);
         }
         
-        // Para o loop de jogo e limpa o estado se a contagem for zero
         if (playerCount === 0) {
             stopAndResetGame();
         }
@@ -234,11 +275,36 @@ io.on('connection', (socket) => {
 
 // --- Loop Principal do Servidor (Game Loop Autoritário) ---
 function gameLoop() {
-    // 1. Processamento de Jogadores (Movimento, Energia)
+    const now = performance.now();
+
+    // 0. Spawna Pickups
+    if (now - lastPickupSpawnTime > PICKUP_SPAWN_INTERVAL) {
+        spawnPickup();
+        lastPickupSpawnTime = now;
+    }
+
+    // 1. Processamento de Jogadores (Movimento, Energia, Respawn)
     for (const id in gamePlayers) {
         let player = gamePlayers[id];
-        if (!player.isAlive) continue;
-
+        
+        // Lógica de Respawn
+        if (player.isDead) {
+            if (now - player.respawnStartTime >= RESPAWN_DELAY) {
+                const respawnPos = getRespawnPosition(player.playerNum);
+                player.x = respawnPos.x;
+                player.y = respawnPos.y;
+                player.health = MAX_HEALTH;
+                player.energy = MAX_ENERGY;
+                player.arrows = STARTING_ARROWS;
+                player.isDead = false;
+                player.isAlive = true;
+                io.emit('message', `${player.name} retornou ao combate!`);
+            } else {
+                continue; // Pula o resto da lógica (movimento, pickups) se estiver morto
+            }
+        }
+        
+        // Movimento
         let dx = 0;
         let dy = 0;
         if (player.input.up) dy = -1;
@@ -259,19 +325,41 @@ function gameLoop() {
             currentSpeed *= PLAYER_SPRINT_SPEED_MULTIPLIER;
             player.energy = Math.max(0, player.energy - ENERGY_COST_SPRINT); 
         } else {
-            // Regeneração de energia 
             player.energy = Math.min(MAX_ENERGY, player.energy + ENERGY_REGEN_RATE * 0.5); 
         }
 
+        // Aplica o movimento
         player.x += dx * currentSpeed;
         player.y += dy * currentSpeed;
         
         // Limites do mapa
         player.x = Math.max(0, Math.min(CANVAS_WIDTH - player.width, player.x));
         player.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.y));
+
+        // 2. Colisão com Pickups (CURA)
+        let pickupToRemove = null;
+        for (const pid in pickups) {
+            const pickup = pickups[pid];
+            if (collides(player, pickup)) {
+                if (pickup.type === 'healing') {
+                    const oldHealth = player.health;
+                    player.health = Math.min(MAX_HEALTH, player.health + pickup.value);
+                    if (player.health > oldHealth) {
+                        io.emit('message', `${player.name} se curou em ${pickup.value} HP!`);
+                        io.to(player.id).emit('visualEffect', { type: 'healFlash', amount: pickup.value });
+                    }
+                }
+                pickupToRemove = pid;
+                break;
+            }
+        }
+        if (pickupToRemove) {
+            delete pickups[pickupToRemove];
+        }
+
     }
 
-    // 2. Movimento e Colisão de Projéteis
+    // 3. Movimento e Colisão de Projéteis
     let projectilesToRemove = [];
     
     for (const id in projectiles) {
@@ -282,14 +370,20 @@ function gameLoop() {
         // Colisão com Jogadores
         for (const playerId in gamePlayers) {
             let targetPlayer = gamePlayers[playerId];
-            if (targetPlayer.id === proj.ownerId || !targetPlayer.isAlive) continue; 
+            if (targetPlayer.id === proj.ownerId || targetPlayer.isDead) continue; 
             
             if (collides(proj, targetPlayer)) {
-                targetPlayer.health = Math.max(0, targetPlayer.health - proj.damage);
+                const damageTaken = proj.damage;
+                targetPlayer.health = Math.max(0, targetPlayer.health - damageTaken);
                 projectilesToRemove.push(id);
                 
+                // Efeito Visual de Dano (Envia apenas para o jogador que levou o dano)
+                io.to(targetPlayer.id).emit('visualEffect', { type: 'damageFlash', amount: damageTaken });
+
                 if (targetPlayer.health === 0) {
                     targetPlayer.isAlive = false;
+                    targetPlayer.isDead = true; 
+                    targetPlayer.respawnStartTime = now;
                     io.emit('playerKilled', { targetId: targetPlayer.id, killerId: proj.ownerId });
                 }
                 break; 
@@ -304,10 +398,11 @@ function gameLoop() {
     
     projectilesToRemove.forEach(id => delete projectiles[id]);
 
-    // 3. Sincronização (Broadcast)
+    // 4. Sincronização (Broadcast)
     io.emit('gameStateUpdate', {
         players: gamePlayers,
         projectiles: projectiles,
+        pickups: pickups // Envia pickups para o cliente
     });
 }
 

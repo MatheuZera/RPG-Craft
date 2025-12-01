@@ -10,6 +10,41 @@
 <body>
     <div class="game-container">
         <canvas id="gameCanvas"></canvas>
+        
+        <div id="visual-effects-overlay"></div>
+        
+        <div id="player-gui" class="player-gui-hidden">
+            <div class="player-stats">
+                <div class="stat-item health-stat">
+                    <span class="stat-label">HP:</span>
+                    <div class="bar-container health-bar-container"><div id="health-bar" class="stat-bar health-bar"></div></div>
+                    <span id="health-value" class="stat-value">100</span>
+                </div>
+                <div class="stat-item energy-stat">
+                    <span class="stat-label">EN:</span>
+                    <div class="bar-container energy-bar-container"><div id="energy-bar" class="stat-bar energy-bar"></div></div>
+                    <span id="energy-value" class="stat-value">100</span>
+                </div>
+            </div>
+            
+            <div class="weapon-info">
+                <div id="equipped-weapon-display" class="weapon-display">
+                    <div id="css-weapon-shape" class="css-weapon-shape-container">
+                        </div>
+                    <span id="weapon-name">Arco Normal</span>
+                </div>
+                <div class="ammo-display">
+                    <span class="label">Munição:</span>
+                    <span id="ammo-count" class="stat-value">20</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="respawn-message" class="hidden">
+            <p>Você foi abatido!</p>
+            <p>Respawn em: <span id="respawn-timer">5.0</span>s</p>
+        </div>
+        
     </div>
 
     <div id="messages"></div>
@@ -38,22 +73,8 @@
             </div>
         </div>
 
-        <div id="player3-controls" class="player-controls-display" data-player-id="P3" style="display:none;">
-            <h4>P3 (Gamepad 1)</h4>
-            <div class="controls-grid compact">
-                <div class="control-item"><span class="label">Mover</span><div class="keys">Joystick Esquerdo</div></div>
-                <div class="control-item"><span class="label">Atirar/Correr</span><div class="keys"><kbd>A (X)</kbd><kbd>B (O)</kbd></div></div>
-                <div class="control-item"><span class="label">Armas</span><div class="keys">D-Pad / Triggers</div></div>
-            </div>
-        </div>
-        <div id="player4-controls" class="player-controls-display" data-player-id="P4" style="display:none;">
-            <h4>P4 (Gamepad 2)</h4>
-            <div class="controls-grid compact">
-                <div class="control-item"><span class="label">Mover</span><div class="keys">Joystick Esquerdo</div></div>
-                <div class="control-item"><span class="label">Atirar/Correr</span><div class="keys"><kbd>A (X)</kbd><kbd>B (O)</kbd></div></div>
-                <div class="control-item"><span class="label">Armas</span><div class="keys">D-Pad / Triggers</div></div>
-            </div>
-        </div>
+        <div id="player3-controls" class="player-controls-display" data-player-id="P3" style="display:none;"></div>
+        <div id="player4-controls" class="player-controls-display" data-player-id="P4" style="display:none;"></div>
     </div>
     
     <script src="/socket.io/socket.io.js"></script> 

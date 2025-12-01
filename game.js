@@ -5,13 +5,24 @@ const messagesContainer = document.getElementById('messages');
 const gamepad1Info = document.getElementById('gamepad1Info');
 const gamepad2Info = document.getElementById('gamepad2Info');
 
+// NOVOS ELEMENTOS DO DOM
+const playerGUI = document.getElementById('player-gui');
+const healthBar = document.getElementById('health-bar');
+const healthValue = document.getElementById('health-value');
+const energyBar = document.getElementById('energy-bar');
+const energyValue = document.getElementById('energy-value');
+const weaponNameDisplay = document.getElementById('weapon-name');
+const ammoCountDisplay = document.getElementById('ammo-count');
+const cssWeaponShapeContainer = document.getElementById('css-weapon-shape');
+const respawnMessage = document.getElementById('respawn-message');
+const respawnTimer = document.getElementById('respawn-timer');
+const visualEffectsOverlay = document.getElementById('visual-effects-overlay');
+
+
 // Referências aos displays de controle
 const playerControlDisplays = {
     'P1': document.getElementById('player1-controls'),
     'P2': document.getElementById('player2-controls'),
-    // P3 e P4 são gamepads, mas o HTML tem containers para eles
-    'P3': document.getElementById('player3-controls'), 
-    'P4': document.getElementById('player4-controls'),
 };
 
 
@@ -21,22 +32,24 @@ let myPlayerId = null;
 let allPlayers = {}; 
 let serverProjectiles = {}; 
 let serverObstacles = []; 
+let serverPickups = {}; // Estado dos Pickups
 let mapWidth = 800; 
 let mapHeight = 600; 
 let cameraX = 0; 
 let cameraY = 0; 
 let gameRunning = false;
 let animationFrameId = null; 
+const RESPAWN_DELAY = 5000; 
+
 
 // --- Input Unificado ---
 let keysToSend = { up: false, down: false, left: false, right: false, sprint: false };
 let attackSent = false; 
 
-// Mapeamento de Teclas (WASD/C/F para P1 E P2 - CUIDADO: Causa conflito no mesmo teclado)
+// Mapeamento de Teclas (WASD/C/F para P1 E P2)
 const INPUT_MAP = {
     P1: { up: ['w'], down: ['s'], left: ['a'], right: ['d'], sprint: ['f'], shoot: ['c'] },
     P2: { up: ['w'], down: ['s'], left: ['a'], right: ['d'], sprint: ['f'], shoot: ['c'] },
-    // Gamepads usam a lógica em scanGamepads, então não precisam de um mapeamento aqui
 };
 
 // --- Configurações de Gamepad ---
@@ -60,94 +73,57 @@ function checkMobile() {
     return /Mobi|Android/i.test(navigator.userAgent);
 }
 
-// --- Gerenciamento do HUD de Controles (NOVA LÓGICA) ---
+// --- Gerenciamento do HUD de Controles ---
 
-/**
- * Exibe o HUD de controle do player conectado e esconde os outros.
- * @param {string} playerId ID do jogador (ex: 'P1')
- */
 function showControlHUD(playerId) {
-    // Esconde todos os HUDs de teclado que não são do player local
     Object.values(playerControlDisplays).forEach(el => {
         if (el) el.style.display = 'none';
     });
     
-    // Mostra o HUD do jogador local
     const hudEl = playerControlDisplays[playerId];
     if (hudEl) {
         hudEl.style.display = 'block';
     }
+    
+    // Mostra o HUD principal do jogador
+    playerGUI.classList.remove('player-gui-hidden');
 }
 
-/**
- * Esconde o HUD de controle de um player que desconectou (deletado visualmente).
- * @param {string} playerId ID do jogador (ex: 'P1')
- */
 function hideControlHUD(playerId) {
     const hudEl = playerControlDisplays[playerId];
     if (hudEl) {
         hudEl.style.display = 'none';
     }
-}
-
-// --- Lógica de Gamepad (P3+) ---
-function updateGamepadStatus(gamepads) {
-    const statusMap = { 0: gamepad1Info, 1: gamepad2Info };
-
-    for (let i = 0; i < 2; i++) {
-        const infoEl = statusMap[i];
-        if (!infoEl) continue;
-
-        if (gamepads[i]) {
-            infoEl.classList.remove('disconnected');
-            infoEl.classList.add('connected');
-            infoEl.innerHTML = `<span class="status-icon"></span>Slot Gamepad ${i + 1} (P${i + 3}): Conectado`;
-        } else {
-            infoEl.classList.remove('connected');
-            infoEl.classList.add('disconnected');
-            infoEl.textContent = `Slot Gamepad ${i + 1} (P${i + 3}): Desconectado`;
-        }
-    }
-}
-
-function scanGamepads() {
-    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-    updateGamepadStatus(gamepads);
-
-    let gamepadIndex = -1;
-    if (myPlayerId === 'P3' && gamepads[0]) {
-        gamepadIndex = 0;
-    } else if (myPlayerId === 'P4' && gamepads[1]) {
-        gamepadIndex = 1;
-    }
-
-    if (gamepadIndex !== -1) {
-        handleGamepadInput(gamepads[gamepadIndex]);
-    }
-}
-
-function handleGamepadInput(gamepad) {
-    // MOVIMENTO (Joystick Esquerdo)
-    const moveX = gamepad.axes[GAMEPAD_MOVE_AXIS_X];
-    const moveY = gamepad.axes[GAMEPAD_MOVE_AXIS_Y];
     
-    keysToSend.up = moveY < -GAMEPAD_DEADZONE;
-    keysToSend.down = moveY > GAMEPAD_DEADZONE;
-    keysToSend.left = moveX < -GAMEPAD_DEADZONE;
-    keysToSend.right = moveX > GAMEPAD_DEADZONE;
-    
-    // AÇÕES
-    if (gamepad.buttons[GAMEPAD_SHOOT_BUTTON] && gamepad.buttons[GAMEPAD_SHOOT_BUTTON].pressed) {
-        attackSent = true;
+    // Esconde o HUD principal se o player local desconectar
+    if (playerId === myPlayerId) {
+        playerGUI.classList.add('player-gui-hidden');
+        respawnMessage.classList.add('hidden');
     }
-    keysToSend.sprint = (gamepad.buttons[GAMEPAD_SPRINT_BUTTON] && gamepad.buttons[GAMEPAD_SPRINT_BUTTON].pressed);
 }
+
+// --- Lógica de Efeitos Visuais ---
+socket.on('visualEffect', (data) => {
+    visualEffectsOverlay.classList.remove('damage-flash', 'heal-flash');
+    void visualEffectsOverlay.offsetWidth; // Reinicia a animação
+    
+    if (data.type === 'damageFlash') {
+        visualEffectsOverlay.classList.add('damage-flash');
+        setTimeout(() => visualEffectsOverlay.classList.remove('damage-flash'), 100);
+    } else if (data.type === 'healFlash') {
+        visualEffectsOverlay.classList.add('heal-flash');
+        setTimeout(() => visualEffectsOverlay.classList.remove('heal-flash'), 100);
+    }
+});
 
 
 // --- Lógica de Input (Teclado - PC) ---
 if (!checkMobile()) {
     window.addEventListener('keydown', (e) => {
         const key = e.key.toLowerCase();
+        const myPlayer = allPlayers[myPlayerId];
+        if (myPlayer && myPlayer.isDead) return; // Bloqueia input se o jogador estiver morto
+        
         const map = INPUT_MAP[myPlayerId];
         if (!map) return;
         
@@ -185,14 +161,13 @@ if (!checkMobile()) {
 // --- Função de Envio de Input ---
 function sendInputToServer() {
     if (!gameRunning || !myPlayerId) return;
-
-    // Se não for mobile, verifica Gamepads
-    if (!checkMobile()) {
-        scanGamepads();
-    }
     
     const myPlayer = allPlayers[myPlayerId];
-    if (!myPlayer || !myPlayer.isAlive) return;
+    if (!myPlayer || myPlayer.isDead) { // Bloqueia input se estiver morto
+        keysToSend = { up: false, down: false, left: false, right: false, sprint: false };
+        attackSent = false;
+        return;
+    }
 
     socket.emit('playerInput', {
         keys: keysToSend, 
@@ -206,7 +181,7 @@ function sendInputToServer() {
 // --- Funções de Câmera e Desenho ---
 function updateCamera() {
     const myPlayer = allPlayers[myPlayerId];
-    if (!myPlayer) return;
+    if (!myPlayer || myPlayer.isDead) return; 
 
     const playerCenterX = myPlayer.x + myPlayer.width / 2;
     const playerCenterY = myPlayer.y + myPlayer.height / 2;
@@ -214,13 +189,76 @@ function updateCamera() {
     let targetX = playerCenterX - gameCanvas.clientWidth / 2;
     let targetY = playerCenterY - gameCanvas.clientHeight / 2;
     
-    // Limites do mapa 
     targetX = Math.max(0, Math.min(mapWidth - gameCanvas.clientWidth, targetX));
     targetY = Math.max(0, Math.min(mapHeight - gameCanvas.clientHeight, targetY));
     
-    // Suavização
     cameraX += (targetX - cameraX) * 0.2; 
     cameraY += (targetY - cameraY) * 0.2; 
+}
+
+// Atualiza o HUD de barras e texto
+function updateLocalHUD(myPlayer) {
+    const healthPercent = (myPlayer.health / 100) * 100;
+    const energyPercent = (myPlayer.energy / 100) * 100;
+
+    healthBar.style.width = `${healthPercent}%`;
+    healthValue.textContent = myPlayer.health;
+    
+    // Efeito Visual: Low Health
+    if (myPlayer.health <= 30) {
+        healthBar.classList.add('low-health-bar');
+    } else {
+        healthBar.classList.remove('low-health-bar');
+    }
+
+    energyBar.style.width = `${energyPercent}%`;
+    energyValue.textContent = Math.round(myPlayer.energy);
+    
+    weaponNameDisplay.textContent = myPlayer.equippedWeapon.name;
+    ammoCountDisplay.textContent = myPlayer.arrows;
+    
+    // Atualiza a forma do arco em CSS
+    // Remove todas as classes de arco para evitar múltiplos
+    cssWeaponShapeContainer.className = 'css-weapon-shape-container'; 
+    if (myPlayer.equippedWeapon.cssClass) {
+        cssWeaponShapeContainer.classList.add(myPlayer.equippedWeapon.cssClass);
+    }
+
+
+    // Lógica do Respawn Message
+    if (myPlayer.isDead) {
+        respawnMessage.classList.remove('hidden');
+        playerGUI.classList.add('player-gui-hidden');
+        
+        const timeElapsed = performance.now() - myPlayer.respawnStartTime;
+        const timeLeft = Math.max(0, RESPAWN_DELAY - timeElapsed);
+        respawnTimer.textContent = (timeLeft / 1000).toFixed(1);
+    } else {
+        respawnMessage.classList.add('hidden');
+        playerGUI.classList.remove('player-gui-hidden');
+    }
+}
+
+// Desenha Pickups
+function drawPickups() {
+    for (const id in serverPickups) {
+        const pickup = serverPickups[id];
+        
+        // Desenha o quadrado do pickup
+        ctx.fillStyle = pickup.color;
+        ctx.fillRect(pickup.x, pickup.y, pickup.width, pickup.height);
+        
+        // Desenho do Símbolo de Cura (Cruz)
+        ctx.fillStyle = 'white';
+        const crossSize = pickup.width * 0.6;
+        const offset = (pickup.width - crossSize) / 2;
+        
+        // Vertical
+        ctx.fillRect(pickup.x + pickup.width / 2 - 2, pickup.y + offset, 4, crossSize);
+        // Horizontal
+        ctx.fillRect(pickup.x + offset, pickup.y + pickup.height / 2 - 2, crossSize, 4);
+        
+    }
 }
 
 function draw() {
@@ -228,7 +266,6 @@ function draw() {
     ctx.fillRect(0, 0, mapWidth, mapHeight); 
     
     ctx.save();
-    // Aplica a câmera
     ctx.translate(-cameraX, -cameraY); 
 
     // 1. Desenha Obstáculos
@@ -236,6 +273,9 @@ function draw() {
         ctx.fillStyle = obs.color || '#34495e'; 
         ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
     });
+    
+    // Desenha Pickups
+    drawPickups();
 
     // 2. Desenha Projéteis
     for (const id in serverProjectiles) {
@@ -249,53 +289,21 @@ function draw() {
     // 3. Desenha Jogadores e UI
     for (const id in allPlayers) {
         const player = allPlayers[id];
-        if (!player.isAlive) continue;
+        
+        if (player.isDead) continue; // Não desenha o corpo se estiver morto
 
         // Corpo
         ctx.fillStyle = player.color;
         ctx.fillRect(player.x, player.y, player.width, player.height);
         
-        // UI
+        // UI BÁSICA (Nome)
         ctx.fillStyle = 'white';
         ctx.font = '10px "Press Start 2P"';
         ctx.textAlign = 'center';
         ctx.fillText(player.name, player.x + player.width / 2, player.y - 20);
-        
-        // Barra de HP
-        const hpWidth = player.width * (player.health / 100);
-        ctx.fillStyle = 'red';
-        ctx.fillRect(player.x, player.y - 15, player.width, 5);
-        ctx.fillStyle = 'lime';
-        ctx.fillRect(player.x, player.y - 15, hpWidth, 5);
-
-        // Barra de Energia
-        const energyWidth = player.width * (player.energy / 100);
-        ctx.fillStyle = '#444';
-        ctx.fillRect(player.x, player.y - 9, player.width, 3);
-        ctx.fillStyle = '#3498db';
-        ctx.fillRect(player.x, player.y - 9, energyWidth, 3);
-        
-        // Nome da Arma
-        ctx.fillStyle = '#f39c12';
-        ctx.font = '8px "Press Start 2P"';
-        ctx.fillText(player.equippedWeapon.name, player.x + player.width / 2, player.y + player.height + 15);
     }
     
     ctx.restore(); 
-    
-    // UI Local (sem câmera)
-    drawLocalUI(); 
-}
-
-function drawLocalUI() {
-    const myPlayer = allPlayers[myPlayerId];
-    if (!myPlayer) return;
-    
-    // Exibe munição
-    ctx.fillStyle = myPlayer.color;
-    ctx.font = '12px "Press Start 2P"';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Munição: ${myPlayer.arrows}`, 10, 30);
 }
 
 
@@ -308,6 +316,11 @@ function gameLoop(currentTime) {
     sendInputToServer();
     updateCamera(); 
     draw(); 
+    
+    const myPlayer = allPlayers[myPlayerId];
+    if (myPlayer) {
+        updateLocalHUD(myPlayer); // Atualiza o HUD HTML
+    }
 
     animationFrameId = requestAnimationFrame(gameLoop);
 }
@@ -319,12 +332,12 @@ socket.on('playerData', (data) => {
     myPlayerId = data.id;
     allPlayers = data.players;
     serverObstacles = data.obstacles;
+    serverPickups = data.pickups;
     mapWidth = data.mapWidth;
     mapHeight = data.mapHeight;
     gameCanvas.width = mapWidth;
     gameCanvas.height = mapHeight;
     
-    // Exibe o HUD de controle do jogador conectado
     showControlHUD(myPlayerId); 
 
     if (!gameRunning) {
@@ -337,13 +350,12 @@ socket.on('playerData', (data) => {
 socket.on('gameStateUpdate', (data) => {
     allPlayers = data.players;
     serverProjectiles = data.projectiles;
+    serverPickups = data.pickups; // Recebe o estado dos pickups
 });
 
 socket.on('playerDisconnected', (playerId) => {
     delete allPlayers[playerId];
     showMessage(`${playerId} se desconectou.`);
-    
-    // Esconde/deleta o HUD do player que desconectou
     hideControlHUD(playerId); 
     
     if (playerId === myPlayerId) {
@@ -362,13 +374,12 @@ socket.on('gameReset', (message) => {
         cancelAnimationFrame(animationFrameId);
     }
     
-    // Esconde todos os HUDs de controle ao resetar
     Object.keys(playerControlDisplays).forEach(hideControlHUD);
 
-    // Limpar o estado local
     myPlayerId = null; 
     allPlayers = {}; 
     serverProjectiles = {}; 
+    serverPickups = {};
     gameRunning = false;
     
     setTimeout(() => {

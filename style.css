@@ -30,6 +30,7 @@ body {
     border: 5px solid #f39c12; 
     box-shadow: 0 0 30px rgba(243, 156, 18, 0.9); 
     aspect-ratio: 4 / 3; 
+    position: relative; 
 }
 
 #gameCanvas {
@@ -39,7 +40,7 @@ body {
     touch-action: none; 
 }
 
-/* --- Display de Mensagens --- */
+/* --- Display de Mensagens (mantido) --- */
 #messages {
     position: absolute;
     top: 10px;
@@ -55,13 +56,7 @@ body {
     z-index: 100;
 }
 
-.message {
-    margin-bottom: 5px;
-    line-height: 1.2;
-    word-wrap: break-word;
-}
-
-/* --- Status do Gamepad --- */
+/* --- Status do Gamepad (mantido) --- */
 #gamepad-status {
     position: absolute;
     top: 10px;
@@ -73,31 +68,7 @@ body {
     z-index: 100;
 }
 
-#gamepad-status p {
-    margin: 3px 0;
-    font-size: 0.7em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.status-icon {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-
-.disconnected .status-icon {
-    background-color: #e74c3c;
-}
-
-.connected .status-icon {
-    background-color: #2ecc71;
-}
-
-/* --- Controles do Jogo (AJUSTADO PARA SER COMPACTO) --- */
-
+/* --- Controles de Atalho (Compactos) --- */
 #controls-container {
     display: flex;
     flex-direction: row;
@@ -119,46 +90,7 @@ body {
     flex: 1; 
     max-width: 250px; 
     text-align: center;
-    
-    /* CRÍTICO: Esconde por padrão, só o JS exibe quando o jogador entra */
     display: none; 
-}
-
-.player-controls-display h4 {
-    margin-top: 0;
-    color: #f39c12;
-    text-transform: uppercase;
-    font-size: 0.8em; 
-    margin-bottom: 6px;
-}
-
-.controls-grid.compact {
-    display: flex;
-    flex-direction: column;
-    gap: 4px; 
-}
-
-.control-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 2px 0; 
-    border-bottom: 1px dashed #4a5568;
-}
-
-.control-item:last-child {
-    border-bottom: none;
-}
-
-.label {
-    font-size: 0.65em; 
-    color: #a0aec0;
-}
-
-.keys {
-    display: flex;
-    gap: 3px;
-    align-items: center;
 }
 
 kbd {
@@ -176,7 +108,285 @@ kbd {
     text-align: center;
 }
 
-/* --- Responsividade (Mobile) --- */
+/* --- Player HUD GUI (Head-Up Display) --- */
+#player-gui {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    background-color: rgba(18, 24, 34, 0.95);
+    border: 2px solid #f39c12;
+    border-radius: 8px;
+    padding: 10px 15px;
+    z-index: 100;
+    transition: opacity 0.3s ease;
+}
+
+.player-gui-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.player-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-right: 15px;
+    border-right: 1px solid #34495e;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.stat-label {
+    font-size: 0.7em;
+    color: #a0aec0;
+}
+
+.stat-value {
+    font-size: 0.8em;
+    min-width: 20px;
+    text-align: right;
+}
+
+/* Barras de Status */
+.bar-container {
+    width: 80px;
+    height: 10px;
+    background-color: #4a5568;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.stat-bar {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.health-bar {
+    background-color: #2ecc71; /* Cor inicial verde */
+}
+
+.low-health-bar {
+    background-color: #e74c3c; /* Vermelho para pouca vida */
+}
+
+.energy-bar {
+    background-color: #3498db;
+}
+
+/* Weapon Info */
+.weapon-info {
+    padding-left: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+#weapon-name {
+    font-size: 0.7em;
+    color: #f39c12;
+    margin-top: 5px;
+}
+
+.ammo-display {
+    font-size: 0.65em;
+    color: #a0aec0;
+    margin-top: 5px;
+}
+
+/* --- Efeitos Visuais Overlay --- */
+#visual-effects-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; 
+    opacity: 0;
+    z-index: 99;
+}
+
+.damage-flash {
+    background-color: rgba(255, 0, 0, 0.4);
+    animation: flash 0.1s ease-out;
+}
+
+.heal-flash {
+    background-color: rgba(0, 255, 0, 0.4);
+    animation: flash 0.1s ease-out;
+}
+
+@keyframes flash {
+    0% { opacity: 0.5; }
+    100% { opacity: 0; }
+}
+
+/* --- Respawn Message Overlay --- */
+#respawn-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(26, 32, 44, 0.9);
+    border: 3px solid #e74c3c;
+    padding: 20px 40px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 1.2em;
+    z-index: 101;
+}
+
+#respawn-message p {
+    margin: 5px 0;
+}
+
+#respawn-timer {
+    color: #f39c12;
+    font-weight: bold;
+    font-size: 1.5em;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* --- Formas de Arco em CSS (Criatividade Visual) --- */
+.css-weapon-shape-container {
+    width: 40px;
+    height: 40px;
+    position: relative;
+    /* Reset de classes anteriores */
+    background: transparent !important;
+    border: none !important;
+    margin-top: 5px;
+}
+.css-weapon-shape-container:before, .css-weapon-shape-container:after, .css-weapon-shape-container .bow-string {
+    all: unset;
+}
+
+/* Arco Normal */
+.bow-normal { 
+    /* Base */
+    border: none;
+    background: transparent;
+}
+.bow-normal:before, .bow-normal:after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 30px;
+    border: 3px solid #8b4513;
+    border-radius: 0 50% 50% 0 / 50%;
+    top: 5px;
+    left: 10px;
+    transform-origin: left center;
+}
+.bow-normal:before { transform: rotate(-10deg); }
+.bow-normal:after { transform: rotate(190deg); }
+
+
+/* Arco Composto (Mais angular/tecnológico) */
+.bow-composto:before, .bow-composto:after {
+    content: '';
+    position: absolute;
+    width: 25px;
+    height: 35px;
+    border: 2px solid #5c6f80;
+    background: #34495e;
+    clip-path: polygon(0 0, 100% 10%, 100% 90%, 0% 100%);
+    top: 0;
+    left: 5px;
+    transform-origin: center;
+}
+.bow-composto:before { transform: rotate(10deg); }
+.bow-composto:after { transform: rotate(170deg); top: unset; bottom: 0; }
+
+/* Besta (Seta simples com base) */
+.bow-besta {
+    background: #444444;
+    width: 40px;
+    height: 10px;
+    border-radius: 5px;
+    margin-top: 15px;
+}
+.bow-besta:before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 35px;
+    background: #f39c12;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Long Bow (Mais alto e fino) */
+.bow-longbow:before, .bow-longbow:after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 40px;
+    background: #b8860b;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 2px;
+}
+.bow-longbow:before { transform: translateX(-50%) rotate(5deg); top: -5px; }
+.bow-longbow:after { transform: translateX(-50%) rotate(-5deg); top: 5px; }
+
+/* Shortbow (Curto e gordinho) */
+.bow-shortbow:before {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border: 4px solid #9acd32;
+    border-radius: 50%;
+    clip-path: polygon(0 0, 50% 50%, 0% 100%);
+    transform: rotate(15deg);
+    top: 5px;
+    left: 5px;
+}
+
+/* Arco de Impacto (Quase uma bola de energia) */
+.bow-impacto:before {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle, #ff4500 0%, #8b0000 70%);
+    border-radius: 50%;
+    box-shadow: 0 0 10px #ff4500;
+    top: 5px;
+    left: 5px;
+}
+
+/* Arco de Gelo (Cristalino, pontudo) */
+.bow-gelo:before, .bow-gelo:after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(135deg, #add8e6 0%, #ffffff 50%, #4682b4 100%);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    top: 10px;
+    left: 10px;
+    border: 1px solid #ffffff;
+    box-shadow: 0 0 5px #add8e6;
+}
+.bow-gelo:before { transform: rotate(45deg) scale(0.8); }
+.bow-gelo:after { transform: rotate(135deg) scale(0.6); opacity: 0.7;}
+
+
+/* --- Responsividade (Mobile - mantido) --- */
 @media (max-width: 850px) {
     
     .game-container {
@@ -197,4 +407,25 @@ kbd {
         font-size: 0.6em;
         padding: 6px;
     }
+
+    #player-gui {
+        padding: 5px 10px;
+        bottom: 5px;
+        font-size: 10px;
+    }
+    
+    .bar-container {
+        width: 60px;
+        height: 7px;
+    }
+    
+    .stat-label, .stat-value, #weapon-name, .ammo-display {
+        font-size: 0.6em;
+    }
+    
+    .css-weapon-shape-container {
+        transform: scale(0.7);
+        margin-top: -5px;
+    }
+
 }
