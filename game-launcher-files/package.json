@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "main": "launcher-server.js",
   "scripts": {
-    "start": "node launcher-server.js"
+    "start": "node launcher-server.js",
+    "start:game:example": "node games/Rpg-craft/server.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "socket.io": "^4.7.2"
   }
 }

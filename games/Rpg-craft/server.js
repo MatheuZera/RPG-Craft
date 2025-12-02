@@ -1,4 +1,4 @@
-// server.js (versão segura para ficar dentro de games/<nome>/)
+// server.js (game) - serve arquivos do jogo e expõe Socket.IO
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -7,50 +7,93 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 
-// porta padrão distinta para cada game-server (evita conflito com launcher)
+// porta padrão (pode ser sobrescrita por env PORT_GAME)
 const PORT = process.env.PORT || process.env.PORT_GAME || 4000;
 
 // Serve apenas os arquivos desta pasta (onde server.js está).
-// IMPORTANTE: certifique-se de iniciar este server a partir da pasta do próprio jogo
-// (cd games/Rpg-craft && node server.js) para que __dirname aponte para a pasta do jogo.
-const PUBLIC_DIR = path.join(__dirname); // confinado à pasta do jogo
+// IMPORTANTE: iniciar este server a partir da pasta do próprio jogo (cd games/Rpg-craft && node server.js)
+const PUBLIC_DIR = path.join(__dirname);
+
+// Remove headers que podem bloquear embedding em iframe e define CSP permissiva para frame-ancestors
+app.use((req, res, next) => {
+  try {
+    res.removeHeader('X-Frame-Options');
+    // Permitir que outros sites (ex: launcher em outra porta) embutam este jogo
+    res.setHeader('Content-Security-Policy', "frame-ancestors *");
+  } catch (e) {
+    // ignore
+  }
+  next();
+});
+
+// Serve arquivos estáticos (index.html, game.js, assets...)
 app.use('/', express.static(PUBLIC_DIR));
 
-// configurações do socket.io
+// Força servir index.html caso acessem raiz
+app.get('/', (req, res) => {
+  const indexCandidates = ['index.html', 'render.html', 'game.html', 'main.html'];
+  for (const f of indexCandidates) {
+    const fp = path.join(PUBLIC_DIR, f);
+    if (require('fs').existsSync(fp)) return res.sendFile(fp);
+  }
+  // fallback: serve diretório estático (lista de arquivos) ou mensagem simples
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'), err => {
+    if (err) res.status(404).send('Arquivo de entrada não encontrado.');
+  });
+});
+
+// Socket.IO
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
   pingInterval: 5000,
   pingTimeout: 10000
 });
 
-// (aqui vem toda a lógica do jogo exatamente como você já tem)
-// --- exemplo reduzido para manter a estrutura ---
-// --- substitua/cole sua lógica de game loop/socket aqui (a sua file antiga) ---
-const MAX_PLAYERS = 2;
-const TICK_RATE = 1000 / 60;
-const performanceNow = global.performance ? global.performance.now : Date.now;
-
-let gamePlayers = {};
+// --- Exemplo mínimo de lógica do jogo / socket handlers ---
+// Substitua esta lógica pelo seu gameLoop / handlers reais.
+let players = {};
 let projectiles = {};
 let obstacles = [];
 let pickups = {};
 let lastProjectileId = 0;
 let lastPickupId = 0;
-let gameLoopInterval = null;
 
-// exemplo de listeners (mantenha os seus)
 io.on('connection', (socket) => {
-  // coloque aqui a sua lógica de associação de jogador, eventos playerInput, etc.
   console.log('socket conectado:', socket.id);
+
+  // Exemplo: envia dados iniciais ao cliente
+  socket.emit('playerData', {
+    id: socket.id,
+    players,
+    obstacles,
+    pickups,
+    mapWidth: 800,
+    mapHeight: 600
+  });
+
+  socket.on('playerInput', (data) => {
+    // trate o input do cliente (keys, shoot, etc.)
+    // aqui você integrará sua lógica de movimentação/ação
+  });
+
   socket.on('disconnect', () => {
     console.log('socket desconectou:', socket.id);
+    // remover player, notificar outros etc.
+    socket.broadcast.emit('playerDisconnected', socket.id);
   });
 });
 
-// game loop simples (substitua pelo seu gameLoop)
+// Exemplo de game loop (ajuste para sua lógica)
+const TICK_RATE = 1000 / 60;
+let gameLoopInterval = null;
+
 function gameLoop() {
-  // lógica do jogo...
-  io.emit('gameStateUpdate', { /*...*/ });
+  // Atualize estado do jogo e emita para os clientes
+  io.emit('gameStateUpdate', {
+    players,
+    projectiles,
+    pickups
+  });
 }
 
 function startGameLoop() {
@@ -60,7 +103,8 @@ function startGameLoop() {
   }
 }
 
+// iniciar server
 server.listen(PORT, () => {
   console.log(`Game server rodando em http://localhost:${PORT} (pasta: ${PUBLIC_DIR})`);
-  // opcional: startGameLoop(); -- inicie o loop quando apropriado
+  // startGameLoop(); // descomente se quiser iniciar automaticamente
 });
