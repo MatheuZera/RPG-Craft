@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Game Launcher</title>
+  <style>
+    :root{--bg:#0f1720;--card:#111827;--accent:#f59e0b;--muted:#9ca3af}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:#e6eef6;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px}
+    header{width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:18px;margin:0}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;width:100%;max-width:1200px}
+    .card{background:var(--card);padding:12px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:8px;border:2px solid rgba(255,255,255,0.03)}
+    .card img{width:64px;height:64px;object-fit:contain;border-radius:6px}
+    .name{font-size:12px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .meta{font-size:11px;color:var(--muted)}
+    .card button{margin-top:6px;padding:6px 8px;border-radius:6px;border:none;background:var(--accent);font-weight:700;color:black;cursor:pointer}
+    .no-games{opacity:0.7;color:var(--muted)}
+    .iframe-container{position:fixed;right:20px;top:20px;width:560px;height:420px;border:4px solid rgba(0,0,0,0.3);border-radius:8px;background:#000;overflow:hidden;display:none;z-index:200}
+    .iframe-container iframe{width:100%;height:100%;border:0}
+    .iframe-close{position:absolute;left:6px;top:6px;background:rgba(0,0,0,0.6);color:#fff;padding:4px 6px;border-radius:4px;cursor:pointer}
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Launcher — Seus Jogos</h1>
+  </header>
+
+  <main>
+    <div id="grid" class="grid"></div>
+    <p id="noGames" class="no-games" style="display:none">Nenhum jogo encontrado.</p>
+  </main>
+
+  <div class="iframe-container" id="iframeContainer">
+    <button class="iframe-close" id="iframeClose">Fechar</button>
+    <iframe id="gameFrame"></iframe>
+  </div>
+
+  <footer><span id="status">Carregando...</span></footer>
+
+  <script>
+    async function loadGames(){
+      const res = await fetch("/api/games");
+      const games = await res.json();
+
+      const grid = document.getElementById("grid");
+      const noGames = document.getElementById("noGames");
+      const status = document.getElementById("status");
+
+      grid.innerHTML = "";
+
+      if(games.length === 0){
+        noGames.style.display = "block";
+        status.textContent = "Nenhum jogo encontrado.";
+        return;
+      }
+
+      noGames.style.display = "none";
+      status.textContent = `${games.length} jogo(s) encontrados.`;
+
+      games.forEach(g => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+          <img src="${g.icon}" alt="icon">
+          <div class="name">${g.name}</div>
+          <div class="meta">${g.hasIndex ? "Pronto" : "Sem index.html"}</div>
+        `;
+
+        const btn = document.createElement("button");
+        btn.textContent = "Abrir";
+        btn.onclick = () => openGame(g);
+
+        card.appendChild(btn);
+        grid.appendChild(card);
+      });
+    }
+
+    function openGame(g){
+      const cont = document.getElementById("iframeContainer");
+      const frame = document.getElementById("gameFrame");
+
+      frame.src = g.url;
+      cont.style.display = "block";
+    }
+
+    document.getElementById("iframeClose").onclick = () => {
+      const cont = document.getElementById("iframeContainer");
+      const frame = document.getElementById("gameFrame");
+      frame.src = "about:blank";
+      cont.style.display = "none";
+    };
+
+    loadGames();
+  </script>
+</body>
+</html>
