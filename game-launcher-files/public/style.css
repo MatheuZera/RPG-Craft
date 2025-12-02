@@ -1,31 +1,36 @@
-:root{--bg:#0f1720;--card:#111827;--accent:#f59e0b;--muted:#9ca3af}
-*{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:#e6eef6;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:18px}
-header{width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px}
-h1{font-size:18px;margin:0}
-.controls{display:flex;gap:8px}
-.controls input{padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:#0b1220;color:inherit}
-.controls button{padding:8px 10px;border-radius:6px;border:none;background:var(--accent);color:#000;font-weight:700}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;width:100%;max-width:1200px}
-.card{background:var(--card);padding:12px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:8px;border:2px solid rgba(255,255,255,0.03)}
-.card img{width:64px;height:64px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,0.02)}
-.name{font-size:12px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.meta{font-size:11px;color:var(--muted)}
-.card .actions{display:flex;gap:8px;width:100%;justify-content:center}
-.card button{padding:6px 8px;border-radius:6px;border:none;background:var(--accent);font-weight:700;color:black;cursor:pointer}
-.no-games{opacity:0.8;color:var(--muted)}
-footer{margin-top:12px;opacity:0.8}
+:root{
+  --bg:#0f1720; --card:#0b1220; --accent:#f59e0b; --muted:#9ca3af;
+  --glass: rgba(255,255,255,0.03);
+}
+*{box-sizing:border-box;font-family:Inter, system-ui, "Press Start 2P", sans-serif}
+body{margin:0;background:var(--bg);color:#e6edf3;min-height:100vh;display:flex;flex-direction:column}
+.header{padding:18px 24px;background:linear-gradient(90deg, rgba(0,0,0,0.2), rgba(255,255,255,0.02));box-shadow:0 2px 8px rgba(0,0,0,0.5)}
+.header h1{margin:0;font-size:20px}
+.main{flex:1;padding:20px}
+.games-list{max-width:1000px;margin:0 auto}
+.game-card{display:flex;gap:12px;align-items:center;background:var(--card);padding:12px;border-radius:8px;box-shadow: 0 6px 18px rgba(0,0,0,0.6)}
+.game-thumb{width:96px;height:96px;object-fit:contain;border-radius:6px;background:var(--glass);padding:6px}
+.game-info h3{margin:0 0 6px 0}
+.game-info p{margin:0;color:var(--muted);font-size:13px}
+.actions{margin-top:8px}
+button{cursor:pointer;font-weight:600;padding:8px 12px;border-radius:6px;border:0;background:var(--accent);color:#0b0b0b}
+button.btn-open{margin-right:8px;background:linear-gradient(180deg,#fbbf24,#f59e0b)}
 
-/* Preview panel */
-.preview-panel{position:fixed;right:20px;top:20px;width:540px;height:420px;border:4px solid rgba(0,0,0,0.3);border-radius:8px;background:#000;overflow:hidden;display:none;z-index:200;padding:8px;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
-.preview-header{display:flex;gap:12px;align-items:center;padding:6px}
-.preview-header img{width:56px;height:56px;border-radius:8px}
-.preview-name{font-weight:700}
-.preview-body{display:flex;flex-direction:column;height:calc(100% - 84px)}
-.preview-body iframe{flex:1;border:0;background:#000}
-.preview-actions{display:flex;gap:8px;justify-content:flex-end;padding-top:8px}
-.preview-close{position:absolute;left:8px;top:8px;background:rgba(0,0,0,0.6);color:#fff;padding:6px 8px;border-radius:6px;border:none;cursor:pointer}
+.footer{padding:10px 20px;color:var(--muted);font-size:12px}
 
-@media (max-width:900px){
-  .preview-panel{right:8px;left:8px;width:auto;height:340px}
+/* OVERLAY e IFRAME */
+.hidden{display:none}
+#game-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;
+}
+#game-overlay-inner{
+  width:96%;height:94%;position:relative;background:#000;border-radius:8px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.7);
+}
+#gameFrame{width:100%;height:100%;border:none;display:block}
+#close-game{
+  position:absolute;right:12px;top:12px;z-index:10000;background:rgba(255,255,255,0.95);color:#000;border-radius:6px;padding:6px 10px;font-weight:700;
+}
+@media (max-width:600px){
+  .game-card{flex-direction:column;align-items:flex-start}
+  .game-thumb{width:100%;height:140px}
 }

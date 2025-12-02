@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
@@ -7,38 +7,40 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Launcher — Seus Jogos</h1>
-    <div class="controls">
-      <input id="search" placeholder="Pesquisar jogos..." />
-      <button id="refresh">Atualizar</button>
-    </div>
+  <header class="header">
+    <h1>Meu Launcher de Jogos</h1>
   </header>
 
-  <main>
-    <div id="grid" class="grid"></div>
-    <p id="noGames" class="no-games" style="display:none">Nenhum jogo encontrado.</p>
+  <main class="main">
+    <section class="games-list">
+      <h2>Jogos disponíveis</h2>
+      <div class="game-card">
+        <img src="../Rpg-craft/icon.png" alt="Rpg-craft" class="game-thumb">
+        <div class="game-info">
+          <h3>Rpg-craft</h3>
+          <p>Multiplayer shooter / RPG</p>
+          <!-- botão tenta abrir no endereço completo (porta do server do jogo) -->
+          <div class="actions">
+            <button class="btn-open" data-url="http://localhost:4000/">Abrir (porta 4000)</button>
+            <!-- fallback relativo caso você sirva tudo no mesmo servidor -->
+            <button class="btn-open" data-url="/Rpg-craft/">Abrir (caminho relativo)</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <div class="preview-panel" id="previewPanel" aria-hidden="true">
-    <button id="previewClose" class="preview-close">✕</button>
-    <div class="preview-header">
-      <img id="previewIcon" alt="ícone" />
-      <div>
-        <div id="previewName" class="preview-name"></div>
-        <div id="previewMeta" class="preview-meta"></div>
-      </div>
-    </div>
-    <div class="preview-body">
-      <iframe id="previewFrame" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
-      <div class="preview-actions">
-        <button id="openInTab">Abrir em nova aba</button>
-        <button id="openInIframe">Jogar aqui</button>
-      </div>
+  <!-- OVERLAY com IFRAME -->
+  <div id="game-overlay" class="hidden">
+    <div id="game-overlay-inner">
+      <button id="close-game" title="Fechar">✕ Voltar</button>
+      <iframe id="gameFrame" src="about:blank" frameborder="0" allowfullscreen></iframe>
     </div>
   </div>
 
-  <footer><span id="status">Carregando...</span></footer>
+  <footer class="footer">
+    <small>Dica: se o jogo usar sockets em porta diferente, use a versão com host:porta.</small>
+  </footer>
 
   <script src="launcher.js"></script>
 </body>
